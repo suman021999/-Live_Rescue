@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Trash2, X, Eye, EyeOff } from "lucide-react";
+import { logoutUser } from "../../common/service";
 
 // const Toggle = ({ enabled, onChange }) => (
 //   <button
@@ -64,6 +65,15 @@ const Security = () => {
       setPasswordForm({ current: "", next: "", confirm: "" });
     }, 1500);
   };
+
+  const handleDeleteAccount = async () => {
+  try {
+    await logoutUser();
+    window.location.href = "/";
+  } catch (error) {
+    console.error("Logout failed:", error);
+  }
+};
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
@@ -295,7 +305,7 @@ const Security = () => {
               >
                 Cancel
               </button>
-              <button className="flex-1 bg-red-500 text-white rounded-lg py-2 text-sm">
+              <button onClick={handleDeleteAccount} className="flex-1 bg-red-500 text-white rounded-lg py-2 text-sm">
                 Delete
               </button>
             </div>

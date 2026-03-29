@@ -249,3 +249,30 @@ export const contactFormFields = [
     placeholder: "jane@example.com",
   },
 ];
+
+export const testimonials = [
+  {
+    text: "LiveRescue helped me connect with a doctor instantly during an emergency. It literally saved precious time.",
+    name: "Ravi M.",
+    role: "Emergency Patient",
+    avatar: "RM",
+  },
+  {
+    text: "The Safety SOS feature helped me alert authorities and trusted contacts instantly during a harassment incident. I felt protected and supported.",
+    name: "Neha K.",
+    role: "SOS Alert User",
+    avatar: "NK",
+  },
+  {
+    text: "During a flood situation, I quickly got help from rescue volunteers through this app. Amazing service.",
+    name: "Anita S.",
+    role: "Survivor",
+    avatar: "AS",
+  },
+  {
+    text: "Roadside assistance arrived within minutes after I requested help. Super reliable platform.",
+    name: "Karan P.",
+    role: "Driver",
+    avatar: "KP",
+  },
+];

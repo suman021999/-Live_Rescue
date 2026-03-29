@@ -7,17 +7,20 @@ import { useNavigate } from "react-router-dom";
 
 export default function Emergency() {
   const [calling, setCalling] = useState(null);
-  const navigate = useNavigate()
-
+  const navigate = useNavigate();
   const handleCall = (id) => {
-    setCalling(id);
-    setTimeout(() => setCalling(null), 2500);
-  };
+  setCalling(id);
+
+  setTimeout(() => {
+    setCalling(null);
+    navigate(`/call/:type`);
+  }, 1200);
+};
 
   return (
-    <div className="w-full font-sans">
+    <div className="w-full font-sans pt-20">
       {/* Navbar */}
-      <nav className="flex flex-col sm:flex-row items-center justify-between px-4 sm:px-6 py-4 gap-3 border-b border-gray-100">
+      <nav className="fixed top-0 left-0 w-full z-50 bg-white flex justify-between px-4 sm:px-6 py-4 gap-3 border-b border-gray-100">
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center shadow-md">
             <span className="text-white text-xl font-bold leading-none">+</span>
@@ -48,7 +51,7 @@ export default function Emergency() {
       </div>
 
       {/* Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 sm:px-8 lg:px-24">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 sm:px-8 lg:px-24 pb-6 sm:pb-10 lg:pb-0">
         {cards.map((card) => {
           
           const titleColor =  "text-white";
