@@ -1,3 +1,4 @@
+
 //index.js
 import express from "express";
 import dotenv from "dotenv";
@@ -65,86 +66,68 @@ io.on("connection", (socket) => {
   // ================= RESPONDER JOIN =================
   socket.on("join_responder", ({ type, name }) => {
     if (!responders[type]) responders[type] = [];
-
-    responders[type].push({
-      socketId: socket.id,
-      name,
-    });
-
+    responders[type].push({ socketId: socket.id, name });
     console.log(`✅ ${type} responder joined`);
   });
 
   // ================= CALL REQUEST =================
-  // socket.on("call_request", ({ type, userId }) => {
-  //   console.log("📞 Call requested:", type);
+  socket.on("call_request", async ({ type, userId }) => {
+    console.log("📞 Call requested:", type);
 
-  //   const availableResponders = responders[type];
+    const roomId = `${socket.id}`;
 
-  //   if (!availableResponders || availableResponders.length === 0) {
-  //     socket.emit("no_responder_available");
-  //     return;
-  //   }
+    socket.emit("call_accepted", { roomId });
 
-  //   // pick first responder (simple logic)
-  //   const responder = availableResponders[0];
+    try {
+      await sendMeetingEmail("sankupatra2@gmail.com", roomId);
+      console.log("📧 Email sent successfully");
+    } catch (err) {
+      console.error("❌ Email failed:", err);
+    }
 
-  //   const roomId = `${socket.id}-${responder.socketId}`;
+    const availableResponders = responders[type];
 
-  //   // notify responder
-  //   io.to(responder.socketId).emit("incoming_call", {
-  //     roomId,
-  //     userId,
-  //     type,
-  //   });
+    if (!availableResponders || availableResponders.length === 0) {
+      socket.emit("no_responder_available");
+      return;
+    }
 
-  //   // notify user
-  //   socket.emit("call_accepted", { roomId });
-  // });
-
-socket.on("call_request", async ({ type, userId }) => {
-  console.log("📞 Call requested:", type);
-
-  const roomId = `${socket.id}`;
-
-  // ✅ ALWAYS SEND ROOM TO USER FIRST
-  socket.emit("call_accepted", { roomId });
-
-  try {
-    await sendMeetingEmail("sankupatra2@gmail.com", roomId);
-    console.log("📧 Email sent successfully");
-  } catch (err) {
-    console.error("❌ Email failed:", err);
-  }
-
-  const availableResponders = responders[type];
-
-  // ❗ optional: just info, don't block user
-  if (!availableResponders || availableResponders.length === 0) {
-    socket.emit("no_responder_available");
-    return;
-  }
-
-  const responder = availableResponders[0];
-
-  io.to(responder.socketId).emit("incoming_call", {
-    roomId,
-    userId,
-    type,
+    const responder = availableResponders[0];
+    io.to(responder.socketId).emit("incoming_call", { roomId, userId, type });
   });
-});
 
   // ================= JOIN ROOM =================
+  // 🔥 FIXED: Coordinate caller/answerer roles properly
   socket.on("join_room", (roomId) => {
     socket.join(roomId);
-    console.log(`📦 Joined room: ${roomId}`);
+
+    const room = io.sockets.adapter.rooms.get(roomId);
+    const peerCount = room ? room.size : 0;
+
+    console.log(`📦 join_room: ${roomId} — peers in room: ${peerCount}`);
+
+    if (peerCount === 1) {
+      // First peer: they are the caller, wait for 2nd peer
+      socket.emit("room_ready", { isCaller: true });
+      console.log(`👤 First peer in room ${roomId} — waiting for 2nd`);
+    } else {
+      // Second peer joined
+      socket.emit("room_ready", { isCaller: false });
+
+      // 🔥 Tell the FIRST peer to create and send the offer NOW
+      socket.to(roomId).emit("start_offer");
+      console.log(`🤝 Second peer joined ${roomId} — triggering offer`);
+    }
   });
 
   // ================= WEBRTC SIGNALING =================
   socket.on("offer", ({ roomId, offer }) => {
+    console.log(`📡 Relaying offer in room ${roomId}`);
     socket.to(roomId).emit("offer", offer);
   });
 
   socket.on("answer", ({ roomId, answer }) => {
+    console.log(`📡 Relaying answer in room ${roomId}`);
     socket.to(roomId).emit("answer", answer);
   });
 
@@ -155,11 +138,7 @@ socket.on("call_request", async ({ type, userId }) => {
   // ================= END CALL =================
   socket.on("end_call", ({ callId }) => {
     console.log("📴 Call ended:", callId);
-
-    // notify others
     socket.broadcast.emit("call_ended", { callId });
-
-    // leave joined rooms
     socket.rooms.forEach((room) => {
       if (room !== socket.id) {
         socket.leave(room);
@@ -167,25 +146,19 @@ socket.on("call_request", async ({ type, userId }) => {
       }
     });
   });
+
   // ================= DISCONNECT =================
   socket.on("disconnect", () => {
     console.log("❌ Disconnected:", socket.id);
-
-    // remove user
     users = users.filter((u) => u.socketId !== socket.id);
-
-    // remove from all responder types
     Object.keys(responders).forEach((type) => {
-      responders[type] = responders[type].filter(
-        (r) => r.socketId !== socket.id
-      );
+      responders[type] = responders[type].filter((r) => r.socketId !== socket.id);
     });
   });
 });
 
 // ================= START SERVER =================
 const PORT = process.env.PORT || 5000;
-
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

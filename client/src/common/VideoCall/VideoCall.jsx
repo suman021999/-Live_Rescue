@@ -3,15 +3,10 @@
 import { Mic, MicOff, Video, VideoOff, Monitor, PhoneOff } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
+import { io } from "socket.io-client";
 
-import {
-  socket,
-  joinRoomSocket,
-  sendOffer,
-  sendAnswer,
-  sendIceCandidate,
-  endCallSocket,
-} from "../../common/service";
+// 🔥 Use env variable for socket URL
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
 
 export default function VideoCall() {
   const navigate = useNavigate();
@@ -21,13 +16,18 @@ export default function VideoCall() {
   const remoteVideoRef = useRef(null);
   const peerConnection = useRef(null);
   const localStreamRef = useRef(null);
-  const allStreams = useRef([]); // 🔥 TRACK ALL STREAMS
+  const allStreams = useRef([]);
+  const socketRef = useRef(null); // 🔥 LOCAL SOCKET — not the global singleton
+  const pendingCandidates = useRef([]);
+  const isCaller = useRef(false);
+  const makingOffer = useRef(false);
 
   const [isMuted, setIsMuted] = useState(false);
   const [videoOff, setVideoOff] = useState(false);
   const [streamReady, setStreamReady] = useState(false);
-
   const [remoteConnected, setRemoteConnected] = useState(false);
+  const [status, setStatus] = useState("Connecting...");
+
   // ================= STOP ALL CAMERAS =================
   const stopAllCameras = () => {
     allStreams.current.forEach((stream) => {
@@ -36,109 +36,221 @@ export default function VideoCall() {
     allStreams.current = [];
   };
 
-  // ================= INIT =================
+  // ================= FLUSH PENDING ICE =================
+  const flushPendingCandidates = async (pc) => {
+    for (const c of pendingCandidates.current) {
+      try {
+        await pc.addIceCandidate(c);
+      } catch (e) {
+        console.warn("ICE flush error:", e);
+      }
+    }
+    pendingCandidates.current = [];
+  };
 
+  // ================= INIT =================
   useEffect(() => {
     if (!roomId) return;
 
-    joinRoomSocket(roomId);
+    let pc = null;
 
-    const startMedia = async () => {
+    // 🔥 KEY FIX: forceNew: true — each tab gets its OWN socket connection
+    // Without this, both tabs share one socket singleton → events fire on both → chaos
+    const sock = io(SOCKET_URL, {
+      withCredentials: true,
+      forceNew: true,
+    });
+    socketRef.current = sock;
+
+    const init = async () => {
       try {
-        stopAllCameras();
-
+        // 1. Get media first
         const stream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: true,
         });
-
         localStreamRef.current = stream;
         allStreams.current.push(stream);
-
         setStreamReady(true);
 
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
         }
 
-        peerConnection.current = new RTCPeerConnection({
-          iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+        // 2. Create peer connection
+
+        //         const pc = new RTCPeerConnection({
+        //   iceServers: [
+        //     { urls: "stun:stun.l.google.com:19302" },
+        //     { urls: "stun:stun1.l.google.com:19302" },
+        //   ],
+        // });
+        const pc = new RTCPeerConnection({
+          iceServers: [
+            // ✅ STUN (keep)
+            { urls: "stun:stun.l.google.com:19302" },
+
+            // 🔥 TURN (ADD THIS)
+            {
+              urls: "turn:relay.metered.ca:80",
+              username: "YOUR_USERNAME",
+              credential: "YOUR_PASSWORD",
+            },
+          ],
         });
+        peerConnection.current = pc;
 
-        stream.getTracks().forEach((track) => {
-          peerConnection.current.addTrack(track, stream);
-        });
+        // Add local tracks to peer connection
+        stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
-        // peerConnection.current.ontrack = (event) => {
-        //   if (remoteVideoRef.current) {
-        //     remoteVideoRef.current.srcObject = event.streams[0];
-        //   }
-        // };
-
-        peerConnection.current.ontrack = (event) => {
+        // Remote stream received
+        pc.ontrack = (event) => {
+          console.log("🎥 Remote track received");
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = event.streams[0];
-            setRemoteConnected(true); // ✅ SHOW UI
+          }
+          setRemoteConnected(true);
+          setStatus("Connected");
+        };
+
+        // ICE candidate generated locally
+        pc.onicecandidate = ({ candidate }) => {
+          if (candidate) {
+            sock.emit("ice_candidate", { roomId, candidate });
           }
         };
 
-        peerConnection.current.onicecandidate = (event) => {
-          if (event.candidate) {
-            sendIceCandidate(roomId, event.candidate);
-          }
+        pc.onconnectionstatechange = () => {
+          console.log("🔗 Connection state:", pc.connectionState);
+          if (pc.connectionState === "connected") setStatus("Connected");
+          if (pc.connectionState === "disconnected")
+            setStatus("Reconnecting...");
+          if (pc.connectionState === "failed") setStatus("Connection failed");
         };
 
-        const offer = await peerConnection.current.createOffer();
-        await peerConnection.current.setLocalDescription(offer);
-        sendOffer(roomId, offer);
+        // 3. Set up ALL socket listeners BEFORE emitting join_room
+        //    This is critical — server may respond instantly
+
+        // Server tells us: are we first (caller) or second (answerer) in the room?
+        sock.on("room_ready", ({ isCaller: caller }) => {
+          isCaller.current = caller;
+          console.log("📦 room_ready — isCaller:", caller);
+          setStatus(caller ? "Waiting for other peer..." : "Joining call...");
+          // If caller: we wait for "start_offer" (triggered when 2nd peer joins)
+          // If answerer: we wait for "offer"
+        });
+
+        // Server fires this on the FIRST peer when the SECOND peer joins
+        sock.on("start_offer", async () => {
+          console.log("🤝 2nd peer joined → creating offer");
+          try {
+            makingOffer.current = true;
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            sock.emit("offer", { roomId, offer });
+            console.log("📤 Offer sent");
+          } catch (e) {
+            console.error("❌ Offer error:", e);
+          } finally {
+            makingOffer.current = false;
+          }
+        });
+
+        // Received offer from the caller
+        sock.on("offer", async (offer) => {
+          console.log(
+            "📥 Offer received — signaling state:",
+            pc.signalingState
+          );
+          try {
+            const collision =
+              makingOffer.current || pc.signalingState !== "stable";
+            if (collision) {
+              console.warn("⚠️ Offer collision — rolling back");
+              await Promise.all([
+                pc.setLocalDescription({ type: "rollback" }),
+                pc.setRemoteDescription(new RTCSessionDescription(offer)),
+              ]);
+            } else {
+              await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            }
+            await flushPendingCandidates(pc);
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            sock.emit("answer", { roomId, answer });
+            console.log("📤 Answer sent");
+          } catch (e) {
+            console.error("❌ Handle offer error:", e);
+          }
+        });
+
+        // Received answer from the answerer
+        sock.on("answer", async (answer) => {
+          console.log(
+            "📥 Answer received — signaling state:",
+            pc.signalingState
+          );
+          try {
+            if (pc.signalingState === "have-local-offer") {
+              await pc.setRemoteDescription(new RTCSessionDescription(answer));
+              await flushPendingCandidates(pc);
+              console.log("✅ Remote description set from answer");
+            } else {
+              console.warn(
+                "⚠️ Unexpected state for answer:",
+                pc.signalingState
+              );
+            }
+          } catch (e) {
+            console.error("❌ Handle answer error:", e);
+          }
+        });
+
+        // ICE candidate from the other peer
+        sock.on("ice_candidate", async (candidate) => {
+          if (!pc.remoteDescription || !pc.remoteDescription.type) {
+            // Buffer if remote description not set yet
+            pendingCandidates.current.push(new RTCIceCandidate(candidate));
+          } else {
+            try {
+              await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            } catch (e) {
+              console.warn("ICE add error:", e);
+            }
+          }
+        });
+
+        // Other peer ended the call
+        sock.on("call_ended", () => {
+          console.log("📴 Call ended by other peer");
+          setRemoteConnected(false);
+          stopAllCameras();
+          pc.close();
+          navigate("/emergency");
+        });
+
+        // 4. NOW join the room — listeners are all set up above
+        sock.emit("join_room", roomId);
+        console.log("📦 Emitted join_room:", roomId);
       } catch (err) {
-        console.error("❌ Media error:", err);
+        console.error("❌ Init error:", err);
+        setStatus("Camera/mic error");
       }
     };
 
-    startMedia();
-
-    // ================= SOCKET EVENTS =================
-    socket.on("offer", async (offer) => {
-      await peerConnection.current.setRemoteDescription(offer);
-
-      const answer = await peerConnection.current.createAnswer();
-      await peerConnection.current.setLocalDescription(answer);
-
-      sendAnswer(roomId, answer);
-    });
-
-    socket.on("answer", async (answer) => {
-      await peerConnection.current.setRemoteDescription(answer);
-    });
-
-    socket.on("ice_candidate", async (candidate) => {
-      try {
-        await peerConnection.current.addIceCandidate(candidate);
-      } catch (err) {
-        console.error("❌ ICE error:", err);
-      }
-    });
-
-    // ✅ ADD HERE (IMPORTANT)
-    socket.on("call_ended", () => {
-      console.log("📴 Call ended by other user");
-      setRemoteConnected(false);
-      stopAllCameras();
-      peerConnection.current?.close();
-      navigate("/emergency");
-    });
+    init();
 
     // ================= CLEANUP =================
     return () => {
-      socket.off("offer");
-      socket.off("answer");
-      socket.off("ice_candidate");
-      socket.off("call_ended"); // ✅ cleanup
-
+      sock.off("room_ready");
+      sock.off("start_offer");
+      sock.off("offer");
+      sock.off("answer");
+      sock.off("ice_candidate");
+      sock.off("call_ended");
+      sock.disconnect();
       stopAllCameras();
-      peerConnection.current?.close();
-
+      pc?.close();
       setStreamReady(false);
     };
   }, [roomId]);
@@ -147,69 +259,43 @@ export default function VideoCall() {
   const toggleMute = () => {
     const stream = localStreamRef.current;
     if (!stream) return;
-
-    stream.getAudioTracks().forEach((track) => {
-      track.enabled = !track.enabled;
-    });
-
-    setIsMuted((prev) => !prev);
+    stream.getAudioTracks().forEach((t) => (t.enabled = !t.enabled));
+    setIsMuted((p) => !p);
   };
 
-  // ================= TOGGLE VIDEO =================
   const toggleVideo = async () => {
-    if (!peerConnection.current) return;
+    const pc = peerConnection.current;
+    if (!pc) return;
 
     if (!videoOff) {
-      // 🔴 TURN OFF CAMERA
-      stopAllCameras(); // 💥 GUARANTEED LED OFF
-
-      const sender = peerConnection.current
-        .getSenders()
-        .find((s) => s.track?.kind === "video");
-
+      // Turn off
+      stopAllCameras();
+      const sender = pc.getSenders().find((s) => s.track?.kind === "video");
       if (sender) sender.replaceTrack(null);
-
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = null;
-      }
-
+      if (localVideoRef.current) localVideoRef.current.srcObject = null;
       setVideoOff(true);
     } else {
-      // 🟢 TURN ON CAMERA
+      // Turn on
       try {
         const newStream = await navigator.mediaDevices.getUserMedia({
           video: true,
         });
-
         allStreams.current.push(newStream);
-
         const newTrack = newStream.getVideoTracks()[0];
-
-        const sender = peerConnection.current
-          .getSenders()
-          .find((s) => s.track?.kind === "video");
-
-        if (sender) {
-          await sender.replaceTrack(newTrack);
-        }
-
+        const sender = pc.getSenders().find((s) => s.track?.kind === "video");
+        if (sender) await sender.replaceTrack(newTrack);
         localStreamRef.current = newStream;
-
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = newStream;
-        }
-
+        if (localVideoRef.current) localVideoRef.current.srcObject = newStream;
         setVideoOff(false);
-      } catch (err) {
-        console.error("❌ Camera restart error:", err);
+      } catch (e) {
+        console.error("❌ Camera restart error:", e);
       }
     }
   };
 
   const handleEndCall = () => {
-    // endCallSocket();
-    endCallSocket(roomId);
-    stopAllCameras(); // 💥 IMPORTANT
+    socketRef.current?.emit("end_call", { callId: roomId });
+    stopAllCameras();
     peerConnection.current?.close();
     navigate("/emergency");
   };
@@ -217,30 +303,36 @@ export default function VideoCall() {
   // ================= UI =================
   return (
     <div className="w-full h-screen bg-black relative flex items-center justify-center">
+      {/* Local video — full screen background */}
       <video
         ref={localVideoRef}
         autoPlay
         playsInline
+        muted
         className="absolute w-full h-full object-cover"
       />
 
+      {/* Top-left status */}
       <div className="absolute top-4 left-4 text-white z-10">
         <p className="font-semibold">Emergency Responder</p>
-        <p className="text-xs text-green-400">● Connected</p>
+        <p className="text-xs text-green-400">● {status}</p>
       </div>
 
-      {remoteConnected && (
-        <div className="absolute right-6 top-24 w-32 h-40 bg-black rounded-xl overflow-hidden z-10">
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
+      {/* Remote video PiP — always mounted so ref is always valid */}
+      <div
+        className={`absolute right-6 top-24 w-32 h-40 bg-gray-900 rounded-xl overflow-hidden z-10 border border-white/20 transition-opacity duration-300 ${
+          remoteConnected ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <video
+          ref={remoteVideoRef}
+          autoPlay
+          playsInline
+          className="w-full h-full object-cover"
+        />
+      </div>
 
+      {/* Control bar */}
       <div className="absolute bottom-6 flex items-center gap-4 bg-gray-700/50 px-6 py-3 rounded-full backdrop-blur-md">
         <button
           onClick={toggleMute}
