@@ -8,6 +8,7 @@ import ViewPlans from '../../components/ViewPlans/ViewPlans'
 import Banner from '../../components/Banner/Banner'
 import VideoCall from '../../common/VideoCall/VideoCall'
 
+
 const MainPage = () => {
   return (
  <>
@@ -18,7 +19,7 @@ const MainPage = () => {
 
     
       <Route path="/emergency" element={<Emergency />} />
-      <Route path="/call/:type" element={<VideoCall />} />
+      <Route path="/video-call/:roomId" element={<VideoCall />} />
      <Route path="/*" element={<Dashboard />} />
        <Route path="/view_plans" element={<ViewPlans/>} />
 

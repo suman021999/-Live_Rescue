@@ -91,12 +91,54 @@ export const steps = [
   },
 ];
 
+// export const plans = [
+//   {
+//     id: "free",
+//     name: "Free Tier",
+//     badge: "BASIC",
+//     price: { monthly: 0, yearly: 0 },
+//     description: "Essential emergency access for everyone.",
+//     cta: "Current Plan",
+//     ctaDisabled: true,
+//     highlighted: false,
+//     features: [
+//       { text: "Standard queue wait times", included: true },
+//       { text: "Basic routing to available specialists", included: true },
+//       { text: "1 emergency contact", included: true },
+//       { text: "Priority connection (Under 30s)", included: false },
+//       { text: "Direct access to top specialists", included: false },
+//       { text: "Offline emergency SMS routing", included: false },
+//       { text: "Live GPS location sharing", included: false },
+//     ],
+//   },
+//   {
+//     id: "premium",
+//     name: "Premium Rescue",
+//     badge: "RECOMMENDED",
+//     price: { monthly: 9.99, yearly: 7.99 },
+//     description: "Maximum speed when every second counts.",
+//     cta: "Upgrade to Premium",
+//     ctaDisabled: false,
+//     highlighted: true,
+//     features: [
+//       { text: "Priority connection (Under 30s)", included: true },
+//       { text: "Direct access to top specialists", included: true },
+//       { text: "Unlimited emergency contacts", included: true },
+//       { text: "Offline emergency SMS routing", included: true },
+//       { text: "Live GPS location sharing", included: true },
+//       { text: "Medical history auto-share", included: true },
+//       { text: "Dedicated support line", included: true },
+//     ],
+//   },
+// ];
+
+
 export const plans = [
   {
     id: "free",
     name: "Free Tier",
     badge: "BASIC",
-    price: { monthly: 0, yearly: 0 },
+    price: { monthly: 0 },
     description: "Essential emergency access for everyone.",
     cta: "Current Plan",
     ctaDisabled: true,
@@ -115,7 +157,7 @@ export const plans = [
     id: "premium",
     name: "Premium Rescue",
     badge: "RECOMMENDED",
-    price: { monthly: 9.99, yearly: 7.99 },
+    price: { monthly: 9.99 }, // ✅ base price
     description: "Maximum speed when every second counts.",
     cta: "Upgrade to Premium",
     ctaDisabled: false,
@@ -154,36 +196,36 @@ export const fields = [
   { label: "Known Allergies", name: "allergies" },
 ];
 
-export  const plan = [
-    {
-      id: "free",
-      name: "Free Tier",
-      price: "$0",
-      period: "/month",
-      features: [
-        { text: "Standard queue wait times", included: true },
-        { text: "Basic routing to specialists", included: true },
-        { text: "Priority connection", included: false },
-      ],
-      recommended: false,
-      actionLabel: "Current Plan",
-      actionDisabled: true,
-    },
-    {
-      id: "premium",
-      name: "Premium Rescue",
-      price: "$9.99",
-      period: "/month",
-      features: [
-        { text: "Priority connection (Under 30s)", included: true },
-        { text: "Direct access to top specialists", included: true },
-        { text: "Offline emergency SMS routing", included: true },
-      ],
-      recommended: true,
-      actionLabel: "Upgrade to Premium",
-      actionDisabled: false,
-    },
-  ];
+// export  const plan = [
+//     {
+//       id: "free",
+//       name: "Free Tier",
+//       price: "$0",
+//       period: "/month",
+//       features: [
+//         { text: "Standard queue wait times", included: true },
+//         { text: "Basic routing to specialists", included: true },
+//         { text: "Priority connection", included: false },
+//       ],
+//       recommended: false,
+//       actionLabel: "Current Plan",
+//       actionDisabled: true,
+//     },
+//     {
+//       id: "premium",
+//       name: "Premium Rescue",
+//       price: "$9.99",
+//       period: "/month",
+//       features: [
+//         { text: "Priority connection (Under 30s)", included: true },
+//         { text: "Direct access to top specialists", included: true },
+//         { text: "Offline emergency SMS routing", included: true },
+//       ],
+//       recommended: true,
+//       actionLabel: "Upgrade to Premium",
+//       actionDisabled: false,
+//     },
+//   ];
 
 export const initialContacts = [
   {

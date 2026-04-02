@@ -1,49 +1,4 @@
-// //index.js
-// import express from 'express';
-// import dotenv from "dotenv";
-// import cors from 'cors';
-// import database from './db/database.js';
-// import cookieParser from 'cookie-parser';
-// import userRoutes from './routes/user.route.js';
-
-// // Load environment variables
-// dotenv.config();
-
-// // Initialize Express app
-// const app = express();
-
-// // Database connection
-// database();
-
-
-// // CORS Configuration
-// const corsOptions = {
-//   origin: [
-//     process.env.FRONTEND_URL || "http://localhost:5173",
-//   ],
-//   credentials: true,
-//   methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-//   optionsSuccessStatus: 200,
-// };
-
-// // Middleware
-// app.use(cors(corsOptions));
-// app.use(cookieParser());
-// app.use(express.json({ limit: '100mb' }));
-// app.use(express.urlencoded({ extended: true, limit: '100mb' }));
-
-// // Routes
-// app.use("/api/v1/user",  userRoutes )
-
-// const port = process.env.PORT || 5000;
-
-// // Server Startup
-// app.listen(port, () => {
-//   console.log(`🚀 Server running on port ${port}`);
-// });
-
-
-
+//index.js
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -51,9 +6,10 @@ import cookieParser from "cookie-parser";
 import http from "http";
 
 import { Server } from "socket.io";
-
+import { sendMeetingEmail } from "./utils/sendMail.js";
 import database from "./db/database.js";
 import userRoutes from "./routes/user.route.js";
+import callRoutes from "./routes/call.route.js";
 
 // ================= INIT =================
 dotenv.config();
@@ -80,6 +36,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // ================= ROUTES =================
 app.use("/api/v1/user", userRoutes);
+app.use("/api/v1/call", callRoutes);
 
 // ================= SOCKET.IO =================
 const io = new Server(server, {
@@ -118,31 +75,63 @@ io.on("connection", (socket) => {
   });
 
   // ================= CALL REQUEST =================
-  socket.on("call_request", ({ type, userId }) => {
-    console.log("📞 Call requested:", type);
+  // socket.on("call_request", ({ type, userId }) => {
+  //   console.log("📞 Call requested:", type);
 
-    const availableResponders = responders[type];
+  //   const availableResponders = responders[type];
 
-    if (!availableResponders || availableResponders.length === 0) {
-      socket.emit("no_responder_available");
-      return;
-    }
+  //   if (!availableResponders || availableResponders.length === 0) {
+  //     socket.emit("no_responder_available");
+  //     return;
+  //   }
 
-    // pick first responder (simple logic)
-    const responder = availableResponders[0];
+  //   // pick first responder (simple logic)
+  //   const responder = availableResponders[0];
 
-    const roomId = `${socket.id}-${responder.socketId}`;
+  //   const roomId = `${socket.id}-${responder.socketId}`;
 
-    // notify responder
-    io.to(responder.socketId).emit("incoming_call", {
-      roomId,
-      userId,
-      type,
-    });
+  //   // notify responder
+  //   io.to(responder.socketId).emit("incoming_call", {
+  //     roomId,
+  //     userId,
+  //     type,
+  //   });
 
-    // notify user
-    socket.emit("call_accepted", { roomId });
+  //   // notify user
+  //   socket.emit("call_accepted", { roomId });
+  // });
+
+socket.on("call_request", async ({ type, userId }) => {
+  console.log("📞 Call requested:", type);
+
+  const roomId = `${socket.id}`;
+
+  // ✅ ALWAYS SEND ROOM TO USER FIRST
+  socket.emit("call_accepted", { roomId });
+
+  try {
+    await sendMeetingEmail("sankupatra2@gmail.com", roomId);
+    console.log("📧 Email sent successfully");
+  } catch (err) {
+    console.error("❌ Email failed:", err);
+  }
+
+  const availableResponders = responders[type];
+
+  // ❗ optional: just info, don't block user
+  if (!availableResponders || availableResponders.length === 0) {
+    socket.emit("no_responder_available");
+    return;
+  }
+
+  const responder = availableResponders[0];
+
+  io.to(responder.socketId).emit("incoming_call", {
+    roomId,
+    userId,
+    type,
   });
+});
 
   // ================= JOIN ROOM =================
   socket.on("join_room", (roomId) => {
@@ -163,6 +152,21 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("ice_candidate", candidate);
   });
 
+  // ================= END CALL =================
+  socket.on("end_call", ({ callId }) => {
+    console.log("📴 Call ended:", callId);
+
+    // notify others
+    socket.broadcast.emit("call_ended", { callId });
+
+    // leave joined rooms
+    socket.rooms.forEach((room) => {
+      if (room !== socket.id) {
+        socket.leave(room);
+        console.log(`🚪 Left room: ${room}`);
+      }
+    });
+  });
   // ================= DISCONNECT =================
   socket.on("disconnect", () => {
     console.log("❌ Disconnected:", socket.id);

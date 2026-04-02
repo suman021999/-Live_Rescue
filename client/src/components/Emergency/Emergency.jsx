@@ -1,20 +1,45 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Video, UserRound, Sparkle, Loader2 } from "lucide-react";
 import { cards } from "../../common/data";
 import { useNavigate } from "react-router-dom";
-
+import { requestCallSocket, socket } from "../../common/service";
 
 
 export default function Emergency() {
   const [calling, setCalling] = useState(null);
   const navigate = useNavigate();
-  const handleCall = (id) => {
+// const handleCall = (id) => {
+//   setCalling(id);
+
+//   setTimeout(() => {
+//     setCalling(null);
+
+//     // ✅ generate temporary roomId (for now)
+//     const roomId = Date.now();
+
+//     navigate(`/video-call/${roomId}`);
+//   }, 1200);
+// };
+
+useEffect(() => {
+  socket.on("call_accepted", ({ roomId }) => {
+    console.log("✅ Got roomId from backend:", roomId);
+
+    navigate(`/video-call/${roomId}`);
+  });
+
+  return () => {
+    socket.off("call_accepted");
+  };
+}, []);
+
+const handleCall = (id) => {
   setCalling(id);
 
-  setTimeout(() => {
-    setCalling(null);
-    navigate(`/call/:type`);
-  }, 1200);
+  requestCallSocket({
+    type: id,
+    userId: "user123",
+  });
 };
 
   return (

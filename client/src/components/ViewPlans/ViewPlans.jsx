@@ -58,29 +58,55 @@ const ViewPlans = () => {
                 : "border-gray-200"
             }`}
           >
-            {/* Badge */}
-            {plan.highlighted && (
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                <span className="bg-orange-400 text-white text-xs font-bold px-4 py-1 rounded-full">
-                  {plan.badge}
-                </span>
-              </div>
-            )}
+         {/* Badge */}
+{plan.highlighted && (
+  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+    <span className="bg-orange-400 text-white text-xs font-bold px-4 py-1 rounded-full">
+      {plan.badge}
+    </span>
+  </div>
+)}
 
-            <div className="mb-4">
-              <p
-                className={`text-sm font-bold mb-1 ${plan.highlighted ? "text-orange-500" : "text-gray-700"}`}
-              >
-                {plan.name}
-              </p>
-              <div className="flex items-end gap-1">
-                <span className="text-4xl font-extrabold text-gray-900">
-                  {plan.price[billing] === 0 ? "$0" : `$${plan.price[billing]}`}
-                </span>
-                <span className="text-xs text-gray-400 mb-1.5">/month</span>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">{plan.description}</p>
-            </div>
+<div className="mb-4">
+  <p
+    className={`text-sm font-bold mb-1 ${
+      plan.highlighted ? "text-orange-500" : "text-gray-700"
+    }`}
+  >
+    {plan.name}
+  </p>
+
+  <div className="flex items-end gap-1">
+    <span className="text-4xl font-extrabold text-gray-900">
+      {plan.price.monthly === 0
+        ? "$0"
+        : billing === "yearly"
+        ? `$${(plan.price.monthly * 0.8 * 12).toFixed(2)}`
+        : `$${plan.price.monthly}`}
+    </span>
+
+    <span className="text-xs text-gray-400 mb-1.5">
+      {billing === "yearly" ? "/year" : "/month"}
+    </span>
+  </div>
+
+  {/* Yearly discount info */}
+  {billing === "yearly" && plan.price.monthly !== 0 && (
+    <p className="text-xs text-gray-400 mt-1">
+      <span className="line-through mr-1">
+        ${(plan.price.monthly * 12).toFixed(2)}
+      </span>
+      <span className="text-green-500 font-semibold mr-1">
+        20% OFF
+      </span>
+      <span>
+        (${(plan.price.monthly * 0.8).toFixed(2)}/month billed yearly)
+      </span>
+    </p>
+  )}
+
+  <p className="text-xs text-gray-400 mt-1">{plan.description}</p>
+</div>
 
             {/* Features */}
             <ul className="space-y-2.5 mb-6 flex-1">
