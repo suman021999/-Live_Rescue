@@ -12,6 +12,8 @@ export default function VideoCall() {
   const navigate = useNavigate();
   const { roomId } = useParams();
 
+  const [callType, setCallType] = useState("Emergency");
+  const [facingMode, setFacingMode] = useState("user");
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const peerConnection = useRef(null);
@@ -77,14 +79,6 @@ export default function VideoCall() {
           localVideoRef.current.srcObject = stream;
         }
 
-        // 2. Create peer connection
-
-        //         const pc = new RTCPeerConnection({
-        //   iceServers: [
-        //     { urls: "stun:stun.l.google.com:19302" },
-        //     { urls: "stun:stun1.l.google.com:19302" },
-        //   ],
-        // });
         const pc = new RTCPeerConnection({
           iceServers: [
             // ✅ STUN (keep)
@@ -132,8 +126,11 @@ export default function VideoCall() {
         //    This is critical — server may respond instantly
 
         // Server tells us: are we first (caller) or second (answerer) in the room?
-        sock.on("room_ready", ({ isCaller: caller }) => {
+        sock.on("room_ready", ({ isCaller: caller, type }) => {
           isCaller.current = caller;
+
+          // Set the specific type (e.g., medical, sos)
+          if (type) setCallType(type);
           console.log("📦 room_ready — isCaller:", caller);
           setStatus(caller ? "Waiting for other peer..." : "Joining call...");
           // If caller: we wait for "start_offer" (triggered when 2nd peer joins)
@@ -300,6 +297,65 @@ export default function VideoCall() {
     navigate("/emergency");
   };
 
+const switchCamera = async () => {
+  const pc = peerConnection.current;
+  if (!pc) return;
+
+  // ✅ Just change mode if video is OFF (don't start camera)
+  if (videoOff) {
+    const newFacingMode = facingMode === "user" ? "environment" : "user";
+    setFacingMode(newFacingMode);
+    console.log("🔁 Camera switched (OFF state) →", newFacingMode);
+    return;
+  }
+
+  try {
+    const newFacingMode = facingMode === "user" ? "environment" : "user";
+
+    // Stop only video tracks (not audio ❗)
+    const currentStream = localStreamRef.current;
+    currentStream?.getVideoTracks().forEach((track) => track.stop());
+
+    // ⚠️ IMPORTANT: Don't request audio again (prevents mic glitch)
+    const newStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: newFacingMode },
+    });
+
+    allStreams.current.push(newStream);
+
+    const newVideoTrack = newStream.getVideoTracks()[0];
+
+    // Replace track in peer connection
+    const sender = pc.getSenders().find((s) => s.track?.kind === "video");
+    if (sender) {
+      await sender.replaceTrack(newVideoTrack);
+    }
+
+    // Merge with existing audio stream
+    const audioTracks = localStreamRef.current?.getAudioTracks() || [];
+    const combinedStream = new MediaStream([
+      ...audioTracks,
+      newVideoTrack,
+    ]);
+
+    localStreamRef.current = combinedStream;
+
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = combinedStream;
+    }
+
+    setFacingMode(newFacingMode);
+  } catch (err) {
+    console.error("❌ Camera switch error:", err);
+  }
+};
+
+  // Helper function to capitalize the type
+  const formatType = (str) => {
+    if (!str) return "";
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
+
   // ================= UI =================
   return (
     <div className="w-full h-screen bg-black relative flex items-center justify-center">
@@ -314,7 +370,9 @@ export default function VideoCall() {
 
       {/* Top-left status */}
       <div className="absolute top-4 left-4 text-white z-10">
-        <p className="font-semibold">Emergency Responder</p>
+        <p className="font-semibold">
+          {formatType(callType)} Emergency Responder
+        </p>
         <p className="text-xs text-green-400">● {status}</p>
       </div>
 
@@ -350,7 +408,7 @@ export default function VideoCall() {
           {videoOff ? <VideoOff size={18} /> : <Video size={18} />}
         </button>
 
-        <button className="p-3 bg-gray-700 rounded-full text-white">
+        <button onClick={switchCamera} className="p-3 bg-gray-700 rounded-full text-white">
           <Monitor size={18} />
         </button>
 

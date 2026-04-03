@@ -111,7 +111,7 @@ export const socket = io(SOCKET_URL, {
 });
 
 socket.on("connect", () => {
-  console.log("✅ Socket connected:", socket.id);
+  // console.log("✅ Socket connected:", socket.id);
 });
 
 // ================= SOCKET HELPERS =================

@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import calls from "/backround UI/calls.jpeg";
+import { Sparkle } from "lucide-react";
 
 export default function Home() {
   const navigate=useNavigate()
@@ -50,12 +51,25 @@ export default function Home() {
         </ul>
 
         {/* CTA */}
-        <button
+        <div className="flex gap-4"> 
+ <button
           onClick={() => navigate("/auth")}
           className="bg-orange-500 cursor-pointer text-white px-5 py-2 rounded-lg font-medium hover:bg-orange-600 transition"
         >
           Log In
         </button>
+
+        <button
+            onClick={() => navigate("/view_plans")}
+            className="text-sm text-white bg-orange-500 rounded-lg px-3 py-1.5 flex items-center gap-1.5 font-medium transition-all duration-200 hover:bg-orange-600 hover:shadow-md hover:scale-105"
+          >
+            <Sparkle className="w-4 h-4" />
+            View Plans 
+          </button>
+        </div>
+       
+
+     
       </nav>
 
       {/* ─── Hero Section ───────────────────────── */}

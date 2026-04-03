@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Pencil, Trash2, Phone, Mail, X } from "lucide-react";
-import { contactFormFields, emergencyActions, initialContacts } from "../../common/data";
+import { contactFormFields,  initialContacts } from "../../common/data";
 
 
 const getInitials = (name) =>
@@ -10,20 +10,20 @@ const getInitials = (name) =>
     .join("")
     .toUpperCase();
 
-const Toggle = ({ enabled, onChange }) => (
-  <button
-    onClick={() => onChange(!enabled)}
-    className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-      enabled ? "bg-orange-400" : "bg-gray-200"
-    }`}
-  >
-    <span
-      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${
-        enabled ? "translate-x-6" : "translate-x-1"
-      }`}
-    />
-  </button>
-);
+// const Toggle = ({ enabled, onChange }) => (
+//   <button
+//     onClick={() => onChange(!enabled)}
+//     className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+//       enabled ? "bg-orange-400" : "bg-gray-200"
+//     }`}
+//   >
+//     <span
+//       className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${
+//         enabled ? "translate-x-6" : "translate-x-1"
+//       }`}
+//     />
+//   </button>
+// );
 
 const EmContact = () => {
   const [contacts, setContacts] = useState(initialContacts);
@@ -153,7 +153,7 @@ const EmContact = () => {
         </div>
 
         {/* Notifications */}
-        <div className="border border-gray-200 rounded-xl p-4 sm:p-6 bg-white">
+        {/* <div className="border border-gray-200 rounded-xl p-4 sm:p-6 bg-white">
           <h2 className="text-sm sm:text-base font-semibold text-gray-800 mb-5">
             Notification Settings
           </h2>
@@ -178,7 +178,7 @@ const EmContact = () => {
               </div>
             ))}
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Modal */}

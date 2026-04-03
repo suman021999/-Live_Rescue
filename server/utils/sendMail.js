@@ -13,7 +13,7 @@ export const sendMeetingEmail = async (to, roomId) => {
   },
 });
 
-  const joinLink = `https://tkbrv116-5173.inc1.devtunnels.ms/video-call/${roomId}`;
+  const joinLink = `http://localhost:5173/video-call/${roomId}`;
 
   await transporter.sendMail({
     from: `"LiveRescue" <${process.env.EMAIL_USER}>`,

@@ -1,4 +1,3 @@
-
 //index.js
 import express from "express";
 import dotenv from "dotenv";
@@ -51,7 +50,7 @@ let responders = {
   disaster: [],
   roadside: [],
 };
-
+const roomMetadata = {};
 let users = [];
 
 io.on("connection", (socket) => {
@@ -75,8 +74,10 @@ io.on("connection", (socket) => {
     console.log("📞 Call requested:", type);
 
     const roomId = `${socket.id}`;
+    // Store the type for this room
+    roomMetadata[roomId] = type;
 
-    socket.emit("call_accepted", { roomId });
+    socket.emit("call_accepted", { roomId, type });
 
     try {
       await sendMeetingEmail("sankupatra2@gmail.com", roomId);
@@ -104,15 +105,18 @@ io.on("connection", (socket) => {
     const room = io.sockets.adapter.rooms.get(roomId);
     const peerCount = room ? room.size : 0;
 
+    // Get the type we stored earlier
+    const type = roomMetadata[roomId] || "Emergency";
+
     console.log(`📦 join_room: ${roomId} — peers in room: ${peerCount}`);
 
     if (peerCount === 1) {
       // First peer: they are the caller, wait for 2nd peer
-      socket.emit("room_ready", { isCaller: true });
+      socket.emit("room_ready", { isCaller: true, type });
       console.log(`👤 First peer in room ${roomId} — waiting for 2nd`);
     } else {
       // Second peer joined
-      socket.emit("room_ready", { isCaller: false });
+      socket.emit("room_ready", { isCaller: false, type });
 
       // 🔥 Tell the FIRST peer to create and send the offer NOW
       socket.to(roomId).emit("start_offer");
@@ -137,6 +141,7 @@ io.on("connection", (socket) => {
 
   // ================= END CALL =================
   socket.on("end_call", ({ callId }) => {
+    delete roomMetadata[callId];
     console.log("📴 Call ended:", callId);
     socket.broadcast.emit("call_ended", { callId });
     socket.rooms.forEach((room) => {
@@ -152,7 +157,9 @@ io.on("connection", (socket) => {
     console.log("❌ Disconnected:", socket.id);
     users = users.filter((u) => u.socketId !== socket.id);
     Object.keys(responders).forEach((type) => {
-      responders[type] = responders[type].filter((r) => r.socketId !== socket.id);
+      responders[type] = responders[type].filter(
+        (r) => r.socketId !== socket.id
+      );
     });
   });
 });

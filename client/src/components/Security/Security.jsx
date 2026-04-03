@@ -18,11 +18,11 @@ import { logoutUser } from "../../common/service";
 // );
 
 const Security = () => {
-  // const [privacy, setPrivacy] = useState({
-  //   location: true,
-  //   medicalHistory: true,
-  //   analytics: false,
-  // });
+  const [privacy, setPrivacy] = useState({
+    location: true,
+    medicalHistory: true,
+    analytics: false,
+  });
 
   const [showConfirm, setShowConfirm] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -115,22 +115,6 @@ const Security = () => {
                 Update Password
               </button>
             </div>
-
-            {/* 2FA */}
-            {/* <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4">
-              <div>
-                <p className="text-sm font-semibold">
-                  Two-Factor Authentication
-                </p>
-                <p className="text-xs text-gray-400">
-                  Extra protection for your account.
-                </p>
-              </div>
-
-              <button className="w-full sm:w-auto text-sm text-orange-500 border border-orange-200 bg-orange-50 hover:bg-orange-100 px-4 py-2 rounded-lg">
-                Enable 2FA
-              </button>
-            </div> */}
           </div>
         </div>
 

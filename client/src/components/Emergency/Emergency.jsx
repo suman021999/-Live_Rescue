@@ -4,43 +4,30 @@ import { cards } from "../../common/data";
 import { useNavigate } from "react-router-dom";
 import { requestCallSocket, socket } from "../../common/service";
 
-
 export default function Emergency() {
   const [calling, setCalling] = useState(null);
   const navigate = useNavigate();
-// const handleCall = (id) => {
-//   setCalling(id);
 
-//   setTimeout(() => {
-//     setCalling(null);
+  useEffect(() => {
+    socket.on("call_accepted", ({ roomId }) => {
+      console.log("✅ Got roomId from backend:", roomId);
 
-//     // ✅ generate temporary roomId (for now)
-//     const roomId = Date.now();
+      navigate(`/video-call/${roomId}`);
+    });
 
-//     navigate(`/video-call/${roomId}`);
-//   }, 1200);
-// };
+    return () => {
+      socket.off("call_accepted");
+    };
+  }, []);
 
-useEffect(() => {
-  socket.on("call_accepted", ({ roomId }) => {
-    console.log("✅ Got roomId from backend:", roomId);
+  const handleCall = (id) => {
+    setCalling(id);
 
-    navigate(`/video-call/${roomId}`);
-  });
-
-  return () => {
-    socket.off("call_accepted");
+    requestCallSocket({
+      type: id,
+      userId: "user123",
+    });
   };
-}, []);
-
-const handleCall = (id) => {
-  setCalling(id);
-
-  requestCallSocket({
-    type: id,
-    userId: "user123",
-  });
-};
 
   return (
     <div className="w-full font-sans pt-20">
@@ -53,12 +40,18 @@ const handleCall = (id) => {
           <span className="font-bold text-gray-900 text-lg">LiveRescue</span>
         </div>
         <div className="flex flex-wrap justify-center gap-2">
-          <button onClick={()=>navigate("/my_account")} className="text-sm text-gray-600 border border-gray-200 rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-all duration-200 hover:bg-gray-100 hover:shadow-sm hover:scale-105">
+          <button
+            onClick={() => navigate("/my_account")}
+            className="text-sm text-gray-600 border border-gray-200 rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-all duration-200 hover:bg-gray-100 hover:shadow-sm hover:scale-105"
+          >
             <UserRound className="w-4 h-4" />
             My Account
           </button>
 
-          <button onClick={()=>navigate("/view_plans")} className="text-sm text-white bg-orange-500 rounded-lg px-3 py-1.5 flex items-center gap-1.5 font-medium transition-all duration-200 hover:bg-orange-600 hover:shadow-md hover:scale-105">
+          <button
+            onClick={() => navigate("/view_plans")}
+            className="text-sm text-white bg-orange-500 rounded-lg px-3 py-1.5 flex items-center gap-1.5 font-medium transition-all duration-200 hover:bg-orange-600 hover:shadow-md hover:scale-105"
+          >
             <Sparkle className="w-4 h-4" />
             View Plans
           </button>
@@ -78,10 +71,9 @@ const handleCall = (id) => {
       {/* Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 sm:px-8 lg:px-24 pb-6 sm:pb-10 lg:pb-0">
         {cards.map((card) => {
-          
-          const titleColor =  "text-white";
+          const titleColor = "text-white";
           const subtitleColor = "text-white/80";
-          const btnTextColor =  "text-white";
+          const btnTextColor = "text-white";
 
           return (
             <button
@@ -90,7 +82,7 @@ const handleCall = (id) => {
               className={`${card.bg} ${card.hoverBg} rounded-2xl p-6 min-h-72 flex flex-col items-center justify-between gap-3 transition active:scale-95`}
             >
               <div className={`${card.iconBg} rounded-full p-4`}>
-                <card.icon className={`w-6 h-6 ${"text-white"}`}/>
+                <card.icon className={`w-6 h-6 ${"text-white"}`} />
               </div>
 
               <div className="text-center">
