@@ -2,7 +2,8 @@
 
 import { v2 as cloudinary } from "cloudinary";
 import dotenv from "dotenv";
-
+import streamifier from "streamifier";
+//uploadLiveRescuerImage 
 dotenv.config();
 
 // ✅ Cloudinary configuration
@@ -12,22 +13,30 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export const uploadAuctionImage = async (fileBuffer, mimetype) => {
+export const uploadLiveRescuerImage  = async (fileBuffer) => {
   try {
     if (!fileBuffer) return null;
 
-    // Convert buffer to base64 Data URI
-    const base64 = `data:${mimetype};base64,${fileBuffer.toString("base64")}`;
+    return new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: "live_images",
+          resource_type: "image",
+        },
+        (error, result) => {
+          if (error) {
+            console.error("❌ Cloudinary upload error:", error);
+            return reject(new Error("Image upload failed"));
+          }
+          resolve(result.secure_url);
+        }
+      );
 
-    const result = await cloudinary.uploader.upload(base64, {
-      folder: "live_images",
-      resource_type: "image",
+      streamifier.createReadStream(fileBuffer).pipe(stream);
     });
-
-    return result.secure_url;
   } catch (error) {
-    console.error("❌ Cloudinary auction image upload error:", error);
-    throw new Error("Auction image upload failed");
+    console.error("❌ Upload function error:", error);
+    throw error;
   }
 };
 

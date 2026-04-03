@@ -1,4 +1,4 @@
-// auth controller
+// controllers/user.controller.js
 
 import { OAuth2Client } from "google-auth-library";
 import asyncHandler from "express-async-handler";

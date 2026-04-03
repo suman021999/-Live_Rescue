@@ -1,22 +1,63 @@
-import React, { useState } from "react";
+// ================= MY ACCOUNT PAGE =================
+
+import React, { useState, useEffect } from "react";
 import { Upload, Trash2 } from "lucide-react";
 import { fields } from "../../common/data";
-const avatar = "https://i.pravatar.cc/80?img=47";
 
+import {
+  getMyAccount,
+  saveMyAccount,
+  uploadAvatarApi,
+  deleteAvatarApi,
+} from "../../common/service";
 
+const defaultAvatar = "https://api.dicebear.com/9.x/avataaars-neutral/svg?seed=user28";
 
 const MyAccount = () => {
   const [form, setForm] = useState({
-    firstName: "Sarah",
-    lastName: "Jenkins",
-    email: "sarah.jenkins@example.com",
-    phone: "+1 (555) 987-6543",
-    bloodType: "O Positive",
-    allergies: "Penicillin, Peanuts",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    bloodType: "",
+    allergies: "",
   });
 
+  const [avatar, setAvatar] = useState(defaultAvatar);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
 
+  // ================= LOAD ACCOUNT =================
+  useEffect(() => {
+    const fetchAccount = async () => {
+      try {
+        const data = await getMyAccount();
+
+        if (data) {
+          setForm({
+            firstName: data.firstName || "",
+            lastName: data.lastName || "",
+            email: data.email || "",
+            phone: data.phone || "",
+            bloodType: data.bloodType || "",
+            allergies: data.allergies || "",
+          });
+
+          if (data.avatar) {
+            setAvatar(data.avatar);
+          }
+        }
+      } catch (err) {
+        console.error(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAccount();
+  }, []);
+
+  // ================= INPUT CHANGE =================
   const handleChange = (e) => {
     setForm((prev) => ({
       ...prev,
@@ -24,10 +65,50 @@ const MyAccount = () => {
     }));
   };
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  // ================= SAVE =================
+  const handleSave = async () => {
+    try {
+      await saveMyAccount(form);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      alert(err.message);
+    }
   };
+
+  // ================= UPLOAD AVATAR =================
+  const handleUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const res = await uploadAvatarApi(file);
+
+      if (res?.avatar) {
+        setAvatar(res.avatar); // 🔥 update UI instantly
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  // ================= DELETE AVATAR =================
+  const handleDeleteAvatar = async () => {
+    try {
+      await deleteAvatarApi();
+      setAvatar(defaultAvatar);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-500">
+        Loading account...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
@@ -41,7 +122,7 @@ const MyAccount = () => {
         </div>
 
         <div className="space-y-8 sm:space-y-10">
-          {/* Profile Picture */}
+          {/* ================= PROFILE PICTURE ================= */}
           <section>
             <h2 className="text-sm font-semibold text-gray-800 mb-4">
               Profile Picture
@@ -55,12 +136,23 @@ const MyAccount = () => {
               />
 
               <div className="flex gap-3 flex-wrap">
-                <button className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 rounded-lg px-4 py-2 hover:bg-gray-50">
+                {/* Upload */}
+                <label className="flex items-center gap-2 text-sm text-gray-600 border border-gray-200 rounded-lg px-4 py-2 hover:bg-gray-50 cursor-pointer">
                   <Upload size={14} />
                   Upload
-                </button>
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    onChange={handleUpload}
+                  />
+                </label>
 
-                <button className="flex items-center gap-2 text-sm text-red-400 border border-red-200 rounded-lg px-4 py-2 hover:bg-red-50">
+                {/* Delete */}
+                <button
+                  onClick={handleDeleteAvatar}
+                  className="flex items-center gap-2 text-sm text-red-400 border border-red-200 rounded-lg px-4 py-2 hover:bg-red-50"
+                >
                   <Trash2 size={14} />
                   Remove
                 </button>
@@ -68,13 +160,12 @@ const MyAccount = () => {
             </div>
           </section>
 
-          {/* Personal Details */}
+          {/* ================= PERSONAL DETAILS ================= */}
           <section>
             <h2 className="text-sm font-semibold text-gray-800 mb-4">
               Personal Details
             </h2>
 
-            {/* 🔥 Mobile Fix: 1 column → 2 column on larger screens */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
               {fields.map((field) => (
                 <div key={field.name}>
@@ -85,7 +176,7 @@ const MyAccount = () => {
                   <input
                     type="text"
                     name={field.name}
-                    value={form[field.name]}
+                    value={form[field.name] || ""}
                     onChange={handleChange}
                     className="w-full px-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
                   />

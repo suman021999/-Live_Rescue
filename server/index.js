@@ -10,6 +10,9 @@ import { sendMeetingEmail } from "./utils/sendMail.js";
 import database from "./db/database.js";
 import userRoutes from "./routes/user.route.js";
 import callRoutes from "./routes/call.route.js";
+import accountRoutes from "./routes/account.routes.js";
+import emergencyContactRoutes from "./routes/emergencyContact.route.js";
+import securitytRoutes from "./routes/security.routes.js";
 
 // ================= INIT =================
 dotenv.config();
@@ -37,6 +40,9 @@ app.use(express.urlencoded({ extended: true }));
 // ================= ROUTES =================
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/call", callRoutes);
+app.use("/api/v1/account", accountRoutes);
+app.use("/api/v1/emergencyContact", emergencyContactRoutes);
+app.use("/api/v1/security", securitytRoutes);
 
 // ================= SOCKET.IO =================
 const io = new Server(server, {

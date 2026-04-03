@@ -1,3 +1,5 @@
+// routes/user.route.js
+
 import express from "express";
 import { registerAccount, loginAccount, googleLogin, logout } from "../controllers/user.controller.js";
 

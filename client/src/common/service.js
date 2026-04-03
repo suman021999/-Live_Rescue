@@ -5,9 +5,11 @@ import { io } from "socket.io-client";
 
 // ================= ENV =================
 const AUTH_API = import.meta.env.VITE_AUTH_URL;
+const ACCOUNT_API = import.meta.env.VITE_ACCOUNT_URL;
 const CALL_API = import.meta.env.VITE_CALL_URL;
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
-
+const EMERGENCYCONTACT_URL=import.meta.env.VITE_EMERGENCYCONTACT_URL;
+const SECURITY_URL=import.meta.env.VITE_SECURITY_URL;
 // ================= AXIOS INSTANCES =================
 const authApi = axios.create({
   baseURL: AUTH_API,
@@ -18,6 +20,27 @@ const authApi = axios.create({
 
 const callApi = axios.create({
   baseURL: CALL_API,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+const accountApi = axios.create({
+  baseURL: ACCOUNT_API,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+const emergencyApi = axios.create({
+  baseURL: EMERGENCYCONTACT_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+const securityApi = axios.create({
+  baseURL: SECURITY_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -82,6 +105,116 @@ export const logoutUser = async () => {
     localStorage.removeItem("token");
   }
 };
+
+
+// ================= ACCOUNT API =================
+
+accountApi.interceptors.request.use(attachToken);
+
+// 📥 GET MY ACCOUNT
+export const getMyAccount = async () => {
+  try {
+    const res = await accountApi.get("/");
+    return res.data;
+  } catch (err) {
+    throw new Error(err.response?.data?.message || "Fetch account failed");
+  }
+};
+
+// 💾 UPSERT ACCOUNT
+export const saveMyAccount = async (data) => {
+  try {
+    const res = await accountApi.post("/", data);
+    return res.data;
+  } catch (err) {
+    throw new Error(err.response?.data?.message || "Save failed");
+  }
+};
+
+// 🖼️ UPLOAD AVATAR
+export const uploadAvatarApi = async (file) => {
+  const formData = new FormData();
+  formData.append("avatar", file);
+
+  try {
+    const res = await accountApi.post("/avatar", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  } catch (err) {
+    throw new Error(err.response?.data?.message || "Upload failed");
+  }
+};
+
+// ❌ DELETE AVATAR
+export const deleteAvatarApi = async () => {
+  try {
+    const res = await accountApi.delete("/avatar");
+    return res.data;
+  } catch (err) {
+    throw new Error(err.response?.data?.message || "Delete failed");
+  }
+};
+
+
+// ================= EMERGENCY CONTACT API =================
+emergencyApi.interceptors.request.use(attachToken);
+
+// 📥 GET CONTACTS
+export const getEmergencyContacts = async () => {
+  try {
+    const res = await emergencyApi.get("/");
+    return res.data;
+  } catch (err) {
+    throw new Error(err.response?.data?.message || "Fetch failed");
+  }
+};
+
+// ➕ CREATE CONTACT
+export const createEmergencyContact = async (data) => {
+  try {
+    const res = await emergencyApi.post("/", data);
+    return res.data;
+  } catch (err) {
+    throw new Error(err.response?.data?.message || "Create failed");
+  }
+};
+
+// ✏️ UPDATE CONTACT
+export const updateEmergencyContact = async (id, data) => {
+  try {
+    const res = await emergencyApi.put(`/${id}`, data);
+    return res.data;
+  } catch (err) {
+    throw new Error(err.response?.data?.message || "Update failed");
+  }
+};
+
+// ❌ DELETE CONTACT
+export const deleteEmergencyContact = async (id) => {
+  try {
+    const res = await emergencyApi.delete(`/${id}`);
+    return res.data;
+  } catch (err) {
+    throw new Error(err.response?.data?.message || "Delete failed");
+  }
+};
+
+
+// ================= SECURITY API =================
+
+securityApi.interceptors.request.use(attachToken);
+
+// 🔐 CHANGE PASSWORD
+export const changePassword = async (data) => {
+  try {
+    const res = await securityApi.put("/change-password", data);
+    return res.data;
+  } catch (err) {
+    throw new Error(err.response?.data?.message || "Password update failed");
+  }
+};
+
 
 // ================= CALL SERVICES =================
 
