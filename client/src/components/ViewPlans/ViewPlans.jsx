@@ -2,9 +2,23 @@ import React, { useState } from "react";
 import { Check, X, Zap, Star } from "lucide-react";
 import Navbar from "../../common/Navbar/Navbar";
 import { plans, perks } from "../../common/data";
+import { useNavigate } from "react-router-dom";
 
 const ViewPlans = () => {
   const [billing, setBilling] = useState("monthly");
+  const navigate = useNavigate();
+
+  // ✅ Handle plan click with auth check
+  const handlePlanClick = (plan) => {
+    const isLoggedIn = !!localStorage.getItem("token");
+
+    if (!isLoggedIn) {
+      navigate("/");
+      return;
+    }
+
+    navigate("/payment", { state: { plan, billing } });
+  };
 
   return (
     <div className="min-h-screen bg-white font-sans pt-16">
@@ -16,9 +30,11 @@ const ViewPlans = () => {
         <span className="inline-flex items-center gap-1.5 bg-orange-50 text-orange-500 text-xs font-semibold px-3 py-1 rounded-full mb-4">
           <Star size={12} fill="currentColor" /> Simple, transparent pricing
         </span>
+
         <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 leading-tight">
           Choose your rescue plan
         </h1>
+
         <p className="text-gray-400 text-sm mt-3 max-w-md mx-auto">
           Get the help you need, when you need it most. Upgrade anytime, cancel
           anytime.
@@ -58,55 +74,58 @@ const ViewPlans = () => {
                 : "border-gray-200"
             }`}
           >
-         {/* Badge */}
-{plan.highlighted && (
-  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-    <span className="bg-orange-400 text-white text-xs font-bold px-4 py-1 rounded-full">
-      {plan.badge}
-    </span>
-  </div>
-)}
+            {/* Badge */}
+            {plan.highlighted && (
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                <span className="bg-orange-400 text-white text-xs font-bold px-4 py-1 rounded-full">
+                  {plan.badge}
+                </span>
+              </div>
+            )}
 
-<div className="mb-4">
-  <p
-    className={`text-sm font-bold mb-1 ${
-      plan.highlighted ? "text-orange-500" : "text-gray-700"
-    }`}
-  >
-    {plan.name}
-  </p>
+            <div className="mb-4">
+              <p
+                className={`text-sm font-bold mb-1 ${
+                  plan.highlighted ? "text-orange-500" : "text-gray-700"
+                }`}
+              >
+                {plan.name}
+              </p>
 
-  <div className="flex items-end gap-1">
-    <span className="text-4xl font-extrabold text-gray-900">
-      {plan.price.monthly === 0
-        ? "$0"
-        : billing === "yearly"
-        ? `$${(plan.price.monthly * 0.8 * 12).toFixed(2)}`
-        : `$${plan.price.monthly}`}
-    </span>
+              <div className="flex items-end gap-1">
+                <span className="text-4xl font-extrabold text-gray-900">
+                  {plan.price.monthly === 0
+                    ? "$0"
+                    : billing === "yearly"
+                    ? `$${(plan.price.monthly * 0.8 * 12).toFixed(2)}`
+                    : `$${plan.price.monthly}`}
+                </span>
 
-    <span className="text-xs text-gray-400 mb-1.5">
-      {billing === "yearly" ? "/year" : "/month"}
-    </span>
-  </div>
+                <span className="text-xs text-gray-400 mb-1.5">
+                  {billing === "yearly" ? "/year" : "/month"}
+                </span>
+              </div>
 
-  {/* Yearly discount info */}
-  {billing === "yearly" && plan.price.monthly !== 0 && (
-    <p className="text-xs text-gray-400 mt-1">
-      <span className="line-through mr-1">
-        ${(plan.price.monthly * 12).toFixed(2)}
-      </span>
-      <span className="text-green-500 font-semibold mr-1">
-        20% OFF
-      </span>
-      <span>
-        (${(plan.price.monthly * 0.8).toFixed(2)}/month billed yearly)
-      </span>
-    </p>
-  )}
+              {/* Yearly discount */}
+              {billing === "yearly" && plan.price.monthly !== 0 && (
+                <p className="text-xs text-gray-400 mt-1">
+                  <span className="line-through mr-1">
+                    ${(plan.price.monthly * 12).toFixed(2)}
+                  </span>
+                  <span className="text-green-500 font-semibold mr-1">
+                    20% OFF
+                  </span>
+                  <span>
+                    (${(plan.price.monthly * 0.8).toFixed(2)}/month billed
+                    yearly)
+                  </span>
+                </p>
+              )}
 
-  <p className="text-xs text-gray-400 mt-1">{plan.description}</p>
-</div>
+              <p className="text-xs text-gray-400 mt-1">
+                {plan.description}
+              </p>
+            </div>
 
             {/* Features */}
             <ul className="space-y-2.5 mb-6 flex-1">
@@ -135,7 +154,10 @@ const ViewPlans = () => {
                 {plan.cta}
               </button>
             ) : (
-              <button className="w-full py-2.5 rounded-xl text-sm font-semibold bg-orange-400 hover:bg-orange-500 text-white transition flex items-center justify-center gap-2 shadow-md shadow-orange-100">
+              <button
+                onClick={() => handlePlanClick(plan)}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold bg-orange-400 hover:bg-orange-500 text-white transition flex items-center justify-center gap-2 shadow-md shadow-orange-100"
+              >
                 <Zap size={14} />
                 {plan.cta}
               </button>
@@ -144,11 +166,12 @@ const ViewPlans = () => {
         ))}
       </div>
 
-      {/* Perks Strip */}
+      {/* Perks */}
       <div className="bg-gray-50 border-t border-gray-100 px-6 py-10">
         <p className="text-center text-xs font-semibold text-gray-400 uppercase tracking-widest mb-8">
           Everything included in Premium
         </p>
+
         <div className="max-w-3xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-6">
           {perks.map(({ icon: Icon, label, desc }) => (
             <div
@@ -165,7 +188,7 @@ const ViewPlans = () => {
         </div>
       </div>
 
-      {/* Footer note */}
+      {/* Footer */}
       <p className="text-center text-xs text-gray-300 py-6">
         No contracts. Cancel anytime. All prices in USD.
       </p>
