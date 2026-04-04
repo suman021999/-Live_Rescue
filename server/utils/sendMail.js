@@ -44,28 +44,26 @@
 // };
 
 
-// server/utils/sendMail.js
-
 import nodemailer from "nodemailer";
 
 export const sendMeetingEmail = async (to, roomId) => {
   const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
+    host: "smtp.gmail.com", // ✅ use host instead of service
     port: 587,
     secure: false, // TLS
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS, // ⚠️ Must be a Gmail App Password (not your real password)
+      pass: process.env.EMAIL_PASS, // ⚠️ MUST be App Password
     },
   });
 
-  // ✅ Verify SMTP connection before sending
+  // ✅ DEBUG SMTP CONNECTION
   try {
     await transporter.verify();
     console.log("✅ SMTP is ready");
   } catch (err) {
-    console.error("❌ SMTP ERROR:", err);
-    return; // Exit early — don't try to send if SMTP failed
+    console.error("❌ SMTP ERROR FULL:", err); // 🔥 FULL ERROR
+    return;
   }
 
   const joinLink = `${process.env.FRONTEND_URL}/video-call/${roomId}`;
@@ -76,31 +74,17 @@ export const sendMeetingEmail = async (to, roomId) => {
       to,
       subject: "🚑 Emergency Call - Join Now",
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto;">
-          <h2 style="color: #dc2626;">🚑 Emergency Call Request</h2>
-          <p>You have an incoming emergency call. Please join immediately.</p>
-          <a
-            href="${joinLink}"
-            style="
-              display: inline-block;
-              margin: 16px 0;
-              padding: 12px 24px;
-              background: #dc2626;
-              color: white;
-              text-decoration: none;
-              border-radius: 8px;
-              font-weight: bold;
-            "
-          >
-            Join Call Now
-          </a>
-          <p style="color: #6b7280; font-size: 12px;">Room link: ${joinLink}</p>
-        </div>
+        <h2>Emergency Call Request</h2>
+        <p>You have an incoming emergency call.</p>
+        <a href="${joinLink}" style="padding:10px 20px;background:red;color:white;text-decoration:none;">
+          Join Call
+        </a>
+        <p>Room ID: ${joinLink}</p>
       `,
     });
 
-    console.log("✅ Email sent:", info.messageId);
+    console.log("✅ Email sent:", info);
   } catch (err) {
-    console.error("❌ SEND ERROR:", err);
+    console.error("❌ SEND ERROR FULL:", err); // 🔥 FULL ERROR
   }
 };
