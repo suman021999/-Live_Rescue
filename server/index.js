@@ -27,7 +27,7 @@ database();
 const allowedOrigins = [
   "http://localhost:5173",
   "https://live-rescue.vercel.app",
-   process.env.FRONTEND_URL 
+   process.env.FRONTEND_URL
 ];
 
 const corsOptions = {
@@ -60,7 +60,7 @@ app.use("/api/v1/security", securitytRoutes);
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   },
 });
