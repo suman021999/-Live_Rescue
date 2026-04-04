@@ -239,8 +239,9 @@ export const updateCallStatus = async (callId, status) => {
 };
 
 // ================= SOCKET =================
-export const socket = io(SOCKET_URL, {
+export const socket = io(import.meta.env.VITE_SOCKET_URL, {
   withCredentials: true,
+  transports: ["websocket"],
 });
 
 socket.on("connect", () => {
