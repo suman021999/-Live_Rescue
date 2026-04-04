@@ -13,7 +13,7 @@ export const sendMeetingEmail = async (to, roomId) => {
   },
 });
 
-  const joinLink = `${process.env.FRONTEND_URL}/video-call/${roomId}`;
+  const joinLink = `https://live-rescue.vercel.app/video-call/${roomId}`;
 
   await transporter.sendMail({
     from: `"LiveRescue" <${process.env.EMAIL_USER}>`,
