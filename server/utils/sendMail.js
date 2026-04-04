@@ -20,7 +20,7 @@ export const sendMeetingEmail = async (to, roomId) => {
     return;
   }
 
-  const joinLink = `https://live-rescue.vercel.app/video-call/${roomId}`;
+  const joinLink = `http://localhost:5173/video-call/${roomId}`;
 
   try {
     const info = await transporter.sendMail({
