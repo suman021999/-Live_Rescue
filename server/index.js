@@ -25,7 +25,10 @@ database();
 
 // ================= CORS =================
 const corsOptions = {
-  origin: ["https://live-rescue.vercel.app", "http://localhost:5173"],
+   origin: [
+      "https://live-rescue.vercel.app",
+      "http://localhost:5173"
+    ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
 };
@@ -47,7 +50,10 @@ app.use("/api/v1/security", securitytRoutes);
 // ================= SOCKET.IO =================
 const io = new Server(server, {
   cors: {
-    origin: ["https://live-rescue.vercel.app", "http://localhost:5173"],
+     origin: [
+      "https://live-rescue.vercel.app",
+      "http://localhost:5173"
+    ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   },
@@ -109,49 +115,30 @@ io.on("connection", (socket) => {
 
   // ================= JOIN ROOM =================
   // 🔥 FIXED: Coordinate caller/answerer roles properly
-  // socket.on("join_room", (roomId) => {
-  //   socket.join(roomId);
+  socket.on("join_room", (roomId) => {
+    socket.join(roomId);
 
-  //   const room = io.sockets.adapter.rooms.get(roomId);
-  //   const peerCount = room ? room.size : 0;
+    const room = io.sockets.adapter.rooms.get(roomId);
+    const peerCount = room ? room.size : 0;
 
-  //   // Get the type we stored earlier
-  //   const type = roomMetadata[roomId] || "Emergency";
+    // Get the type we stored earlier
+    const type = roomMetadata[roomId] || "Emergency";
 
-  //   console.log(`📦 join_room: ${roomId} — peers in room: ${peerCount}`);
+    console.log(`📦 join_room: ${roomId} — peers in room: ${peerCount}`);
 
-  //   if (peerCount === 1) {
-  //     // First peer: they are the caller, wait for 2nd peer
-  //     socket.emit("room_ready", { isCaller: true, type });
-  //     console.log(`👤 First peer in room ${roomId} — waiting for 2nd`);
-  //   } else {
-  //     // Second peer joined
-  //     socket.emit("room_ready", { isCaller: false, type });
+    if (peerCount === 1) {
+      // First peer: they are the caller, wait for 2nd peer
+      socket.emit("room_ready", { isCaller: true, type });
+      console.log(`👤 First peer in room ${roomId} — waiting for 2nd`);
+    } else {
+      // Second peer joined
+      socket.emit("room_ready", { isCaller: false, type });
 
-  //     // 🔥 Tell the FIRST peer to create and send the offer NOW
-  //     socket.to(roomId).emit("start_offer");
-  //     console.log(`🤝 Second peer joined ${roomId} — triggering offer`);
-  //   }
-  // });
-
- socket.on("join_room", (roomId) => {
-  socket.join(roomId);
-
-  const room = io.sockets.adapter.rooms.get(roomId);
-  const peerCount = room ? room.size : 0;
-
-  const type = roomMetadata[roomId] || "Emergency";
-
-  console.log(`📦 Room ${roomId} size:`, peerCount);
-
-  if (peerCount === 1) {
-    socket.emit("room_ready", { isCaller: true, type });
-  }
-
-  if (peerCount === 2) {
-    io.to(roomId).emit("room_ready", { isCaller: false, type });
-  }
-});
+      // 🔥 Tell the FIRST peer to create and send the offer NOW
+      socket.to(roomId).emit("start_offer");
+      console.log(`🤝 Second peer joined ${roomId} — triggering offer`);
+    }
+  });
 
   // ================= WEBRTC SIGNALING =================
   socket.on("offer", ({ roomId, offer }) => {

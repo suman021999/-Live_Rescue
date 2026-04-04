@@ -1,4 +1,4 @@
-// // ================= VIDEO CALL COMPONENT =================
+// ================= VIDEO CALL COMPONENT =================
 
 // import { Mic, MicOff, Video, VideoOff, Monitor, PhoneOff } from "lucide-react";
 // import { useNavigate, useParams } from "react-router-dom";
@@ -581,20 +581,20 @@ export default function VideoCall() {
         });
 
         // Server fires this on the FIRST peer when the SECOND peer joins
-        // sock.on("start_offer", async () => {
-        //   console.log("🤝 2nd peer joined → creating offer");
-        //   try {
-        //     makingOffer.current = true;
-        //     const offer = await pc.createOffer();
-        //     await pc.setLocalDescription(offer);
-        //     sock.emit("offer", { roomId, offer });
-        //     console.log("📤 Offer sent");
-        //   } catch (e) {
-        //     console.error("❌ Offer error:", e);
-        //   } finally {
-        //     makingOffer.current = false;
-        //   }
-        // });
+        sock.on("start_offer", async () => {
+          console.log("🤝 2nd peer joined → creating offer");
+          try {
+            makingOffer.current = true;
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            sock.emit("offer", { roomId, offer });
+            console.log("📤 Offer sent");
+          } catch (e) {
+            console.error("❌ Offer error:", e);
+          } finally {
+            makingOffer.current = false;
+          }
+        });
 
         // Received offer from the caller
         sock.on("offer", async (offer) => {
