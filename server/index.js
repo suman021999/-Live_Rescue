@@ -24,8 +24,20 @@ const server = http.createServer(app);
 database();
 
 // ================= CORS =================
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://live-rescue.vercel.app",
+   "FRONTEND_URL"
+];
+
 const corsOptions = {
-  origin: [process.env.FRONTEND_URL || "http://localhost:5173"],
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS not allowed"));
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 };
@@ -46,7 +58,11 @@ app.use("/api/v1/security", securitytRoutes);
 
 // ================= SOCKET.IO =================
 const io = new Server(server, {
-  cors: corsOptions,
+  cors: {
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
 });
 
 // 🔥 RESPONDERS STORAGE (multi-type)
