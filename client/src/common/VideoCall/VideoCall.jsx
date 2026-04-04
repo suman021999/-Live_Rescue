@@ -581,76 +581,45 @@ export default function VideoCall() {
         });
 
         // Server fires this on the FIRST peer when the SECOND peer joins
-        sock.on("start_offer", async () => {
-          console.log("🤝 2nd peer joined → creating offer");
-          try {
-            makingOffer.current = true;
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            sock.emit("offer", { roomId, offer });
-            console.log("📤 Offer sent");
-          } catch (e) {
-            console.error("❌ Offer error:", e);
-          } finally {
-            makingOffer.current = false;
-          }
-        });
-
-        // Received offer from the caller
-        // sock.on("offer", async (offer) => {
-        //   console.log("📥 Offer received — signaling state:", pc.signalingState);
+        // sock.on("start_offer", async () => {
+        //   console.log("🤝 2nd peer joined → creating offer");
         //   try {
-        //     const collision =
-        //       makingOffer.current || pc.signalingState !== "stable";
-        //     if (collision) {
-        //       console.warn("⚠️ Offer collision — rolling back");
-        //       await Promise.all([
-        //         pc.setLocalDescription({ type: "rollback" }),
-        //         pc.setRemoteDescription(new RTCSessionDescription(offer)),
-        //       ]);
-        //     } else {
-        //       await pc.setRemoteDescription(new RTCSessionDescription(offer));
-        //     }
-        //     await flushPendingCandidates(pc);
-        //     const answer = await pc.createAnswer();
-        //     await pc.setLocalDescription(answer);
-        //     sock.emit("answer", { roomId, answer });
-        //     console.log("📤 Answer sent");
+        //     makingOffer.current = true;
+        //     const offer = await pc.createOffer();
+        //     await pc.setLocalDescription(offer);
+        //     sock.emit("offer", { roomId, offer });
+        //     console.log("📤 Offer sent");
         //   } catch (e) {
-        //     console.error("❌ Handle offer error:", e);
+        //     console.error("❌ Offer error:", e);
+        //   } finally {
+        //     makingOffer.current = false;
         //   }
         // });
 
-
-        sock.on("room_ready", async ({ isCaller: caller, type }) => {
-  isCaller.current = caller;
-
-  if (type) setCallType(type);
-
-  console.log("📦 room_ready — isCaller:", caller);
-
-  setStatus(caller ? "Waiting for other peer..." : "Joining call...");
-
-  // ✅ CALLER CREATES OFFER DIRECTLY (NO start_offer needed)
-  if (caller) {
-    try {
-      console.log("🚀 Creating offer (caller)");
-
-      makingOffer.current = true;
-
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      sock.emit("offer", { roomId, offer });
-
-      console.log("📤 Offer sent");
-    } catch (e) {
-      console.error("❌ Offer error:", e);
-    } finally {
-      makingOffer.current = false;
-    }
-  }
-});
+        // Received offer from the caller
+        sock.on("offer", async (offer) => {
+          console.log("📥 Offer received — signaling state:", pc.signalingState);
+          try {
+            const collision =
+              makingOffer.current || pc.signalingState !== "stable";
+            if (collision) {
+              console.warn("⚠️ Offer collision — rolling back");
+              await Promise.all([
+                pc.setLocalDescription({ type: "rollback" }),
+                pc.setRemoteDescription(new RTCSessionDescription(offer)),
+              ]);
+            } else {
+              await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            }
+            await flushPendingCandidates(pc);
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            sock.emit("answer", { roomId, answer });
+            console.log("📤 Answer sent");
+          } catch (e) {
+            console.error("❌ Handle offer error:", e);
+          }
+        });
 
         // Received answer from the answerer
         sock.on("answer", async (answer) => {
