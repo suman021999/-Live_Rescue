@@ -272,7 +272,7 @@ const Auth = () => {
             </button>
 
             {/* GOOGLE LOGIN */}
-            <div className="mt-4">
+            <div className="mt-4 w-full flex items-center justify-center">
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
                 onError={() => alert("Google login failed")}
