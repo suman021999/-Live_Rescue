@@ -27,7 +27,7 @@ database();
 const allowedOrigins = [
   "http://localhost:5173",
   "https://live-rescue.vercel.app",
-   "FRONTEND_URL"
+   process.env.FRONTEND_URL 
 ];
 
 const corsOptions = {
