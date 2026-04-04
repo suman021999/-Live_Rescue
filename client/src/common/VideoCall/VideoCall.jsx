@@ -62,6 +62,7 @@ export default function VideoCall() {
       withCredentials: true,
       forceNew: true,
     });
+    
     socketRef.current = sock;
 
     const init = async () => {
@@ -79,19 +80,31 @@ export default function VideoCall() {
           localVideoRef.current.srcObject = stream;
         }
 
-        const pc = new RTCPeerConnection({
-          iceServers: [
-            // ✅ STUN (keep)
-            { urls: "stun:stun.l.google.com:19302" },
+        // const pc = new RTCPeerConnection({
+        //   iceServers: [
+        //     // ✅ STUN (keep)
+        //     { urls: "stun:stun.l.google.com:19302" },
 
-            // 🔥 TURN (ADD THIS)
-            {
-              urls: "turn:relay.metered.ca:80",
-              username: "YOUR_USERNAME",
-              credential: "YOUR_PASSWORD",
-            },
-          ],
-        });
+        //     // 🔥 TURN (ADD THIS)
+        //     {
+        //       urls: "turn:relay.metered.ca:80",
+        //       username: "YOUR_USERNAME",
+        //       credential: "YOUR_PASSWORD",
+        //     },
+        //   ],
+        // });
+
+          const pc = new RTCPeerConnection({
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    {
+      urls: "turn:global.relay.metered.ca:80",
+      username: "REAL_USERNAME",
+      credential: "REAL_PASSWORD",
+    },
+  ],
+});
+
         peerConnection.current = pc;
 
         // Add local tracks to peer connection
