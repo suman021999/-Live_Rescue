@@ -25,17 +25,13 @@ database();
 
 // ================= CORS =================
 const corsOptions = {
-   origin: process.env.FRONTEND_URL ,
+   origin: [
+      "https://live-rescue.vercel.app",
+      "http://localhost:5173"
+    ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
 };
-
-// ✅ ADD HERE
-app.use((req, res, next) => {
-  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
-  res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
-  next();
-});
 
 app.use(cors(corsOptions));
 
@@ -54,9 +50,12 @@ app.use("/api/v1/security", securitytRoutes);
 // ================= SOCKET.IO =================
 const io = new Server(server, {
   cors: {
-     origin: process.env.FRONTEND_URL,
+     origin: [
+      "https://live-rescue.vercel.app",
+      "http://localhost:5173"
+    ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    //  transports: ["websocket", "polling"],
+     transports: ["websocket", "polling"],
     credentials: true,
     
   },
