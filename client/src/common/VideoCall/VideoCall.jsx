@@ -84,8 +84,7 @@ export default function VideoCall() {
 
     const sock = io(SOCKET_URL, {
       withCredentials: true,
-      // ✅ FIX: forceNew ensures each tab/component gets its own socket
-      // Without this, both peers share one socket → events fire on both → chaos
+      transports: ["websocket"],
       forceNew: true,
     });
     socketRef.current = sock;
