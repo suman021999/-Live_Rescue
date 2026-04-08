@@ -3,8 +3,8 @@
 import { Mic, MicOff, Video, VideoOff, Monitor, PhoneOff } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-// import { socket } from "../service";
-import { io } from "socket.io-client";
+import { socket } from "../service";
+// import { io } from "socket.io-client";
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
 
@@ -82,11 +82,14 @@ export default function VideoCall() {
     // ✅ FIX: Declare pc in the outer scope so cleanup can access it
     let pc = null;
 
-    const sock = io(SOCKET_URL, {
-      withCredentials: true,
-      transports: ["websocket"],
-      forceNew: true,
-    });
+
+    const sock = socket;
+
+    // const sock = io(SOCKET_URL, {
+    //   withCredentials: true,
+    //   transports: ["websocket"],
+    //   forceNew: true,
+    // });
     socketRef.current = sock;
 
     const init = async () => {
