@@ -83,14 +83,10 @@ export default function VideoCall() {
     let pc = null;
 
 
-    const sock = socket;
+    
 
-    // const sock = io(SOCKET_URL, {
-    //   withCredentials: true,
-    //   transports: ["websocket"],
-    //   forceNew: true,
-    // });
-    socketRef.current = sock;
+    const sock = socket;
+socketRef.current = sock;
 
     const init = async () => {
       try {

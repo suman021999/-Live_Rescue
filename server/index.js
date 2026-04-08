@@ -24,19 +24,10 @@ const server = http.createServer(app);
 database();
 
 // ================= CORS =================
-const allowedOrigins = [
-  "https://live-rescue.vercel.app",
-  "http://localhost:5173",
-];
+
 
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("CORS not allowed"));
-    }
-  },
+  origin: ["https://live-rescue.vercel.app", "http://localhost:5173"],
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
 };
@@ -58,11 +49,11 @@ app.use("/api/v1/security", securitytRoutes);
 // ================= SOCKET.IO =================
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: ["https://live-rescue.vercel.app", "http://localhost:5173"],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   },
-  transports: ["websocket", "polling"], // ✅ CRITICAL FIX
+  // transports: ["websocket", "polling"], // ✅ CRITICAL FIX
 });
 
 // 🔥 RESPONDERS STORAGE (multi-type)
