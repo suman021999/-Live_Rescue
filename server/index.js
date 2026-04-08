@@ -27,7 +27,7 @@ database();
 const corsOptions = {
    origin: [
       "https://live-rescue.vercel.app",
-      "http://localhost:5173"
+      // "http://localhost:5173"
     ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
@@ -52,10 +52,10 @@ const io = new Server(server, {
   cors: {
      origin: [
       "https://live-rescue.vercel.app",
-      "http://localhost:5173"
+      // "http://localhost:5173"
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-     transports: ["websocket", "polling"],
+    //  transports: ["websocket", "polling"],
     credentials: true,
     
   },

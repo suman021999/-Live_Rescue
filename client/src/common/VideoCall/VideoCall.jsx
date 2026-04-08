@@ -3,7 +3,7 @@
 import { Mic, MicOff, Video, VideoOff, Monitor, PhoneOff } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-import { socket } from "../service";
+// import { socket } from "../service";
 import { io } from "socket.io-client";
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
