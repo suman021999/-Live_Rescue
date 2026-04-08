@@ -25,7 +25,7 @@ database();
 
 // ================= CORS =================
 const corsOptions = {
-   origin: process.env.FRONTEND_URL || "http://localhost:5173",
+   origin: process.env.FRONTEND_URL ,
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
 };
@@ -47,7 +47,7 @@ app.use("/api/v1/security", securitytRoutes);
 // ================= SOCKET.IO =================
 const io = new Server(server, {
   cors: {
-     origin: process.env.FRONTEND_URL || "http://localhost:5173",
+     origin: process.env.FRONTEND_URL,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
      transports: ["websocket", "polling"],
     credentials: true,
