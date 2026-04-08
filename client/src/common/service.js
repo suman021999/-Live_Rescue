@@ -241,6 +241,7 @@ export const updateCallStatus = async (callId, status) => {
 // ================= SOCKET =================
 export const socket = io(SOCKET_URL, {
   withCredentials: true,
+  transports: ["websocket"],
 });
 
 socket.on("connect", () => {

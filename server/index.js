@@ -55,7 +55,9 @@ const io = new Server(server, {
       "http://localhost:5173"
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+     transports: ["websocket", "polling"],
     credentials: true,
+    
   },
 });
 
