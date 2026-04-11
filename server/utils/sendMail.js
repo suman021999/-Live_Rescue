@@ -58,7 +58,7 @@ export const sendMeetingEmail = async (to, roomId) => {
       throw new Error("Room ID is missing");
     }
 
-    const joinLink = `http://localhost:5173/video-call/${roomId}`;
+    const joinLink = `${process.env.FRONTEND_URL}/video-call/${roomId}`;
 
     console.log("📧 Sending email to:", to);
     console.log("🔗 Join link:", joinLink);
