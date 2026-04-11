@@ -4,12 +4,14 @@ import nodemailer from "nodemailer";
 
 export const sendMeetingEmail = async (to, roomId) => {
   const transporter = nodemailer.createTransport({
-    service: "gmail", // 🔥 change this
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // true for 465
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS, // App Password, not raw password
+  },
+});
 
   // ✅ DEBUG SMTP CONNECTION
   try {
@@ -20,7 +22,7 @@ export const sendMeetingEmail = async (to, roomId) => {
     return;
   }
 
-  const joinLink = `${process.env.FRONTEND_URL}/video-call/${roomId}`;
+  const joinLink = `http://localhost:5173/video-call/${roomId}`;
 
   try {
     const info = await transporter.sendMail({
@@ -39,7 +41,9 @@ export const sendMeetingEmail = async (to, roomId) => {
 
     console.log("✅ Email sent:", info.response);
   } catch (err) {
-    console.error("❌ SEND ERROR:", err.message);
+    console.error("❌ SEND ERROR (full):", JSON.stringify(err, null, 2));
+  console.error("❌ SEND ERROR code:", err.code);
+  console.error("❌ SEND ERROR response:", err.response);
   }
 };
 
