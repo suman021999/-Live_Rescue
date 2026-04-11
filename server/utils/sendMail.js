@@ -44,47 +44,98 @@
 // };
 
 
+// import nodemailer from "nodemailer";
+
+// export const sendMeetingEmail = async (to, roomId) => {
+//   const transporter = nodemailer.createTransport({
+//     host: "smtp.gmail.com", // ✅ use host instead of service
+//     port: 587,
+//     secure: false, // TLS
+//     auth: {
+//       user: process.env.EMAIL_USER,
+//       pass: process.env.EMAIL_PASS, // ⚠️ MUST be App Password
+//     },
+//   });
+
+//   // ✅ DEBUG SMTP CONNECTION
+//   try {
+//     await transporter.verify();
+//     console.log("✅ SMTP is ready");
+//   } catch (err) {
+//     console.error("❌ SMTP ERROR FULL:", err); // 🔥 FULL ERROR
+//     return;
+//   }
+
+//   const joinLink = `${process.env.FRONTEND_URL}/video-call/${roomId}`;
+
+//   try {
+//     const info = await transporter.sendMail({
+//       from: `"LiveRescue" <${process.env.EMAIL_USER}>`,
+//       to,
+//       subject: "🚑 Emergency Call - Join Now",
+//       html: `
+//         <h2>Emergency Call Request</h2>
+//         <p>You have an incoming emergency call.</p>
+//         <a href="${joinLink}" style="padding:10px 20px;background:red;color:white;text-decoration:none;">
+//           Join Call
+//         </a>
+//         <p>Room ID: ${joinLink}</p>
+//       `,
+//     });
+
+//     console.log("✅ Email sent:", info);
+//   } catch (err) {
+//     console.error("❌ SEND ERROR FULL:", err); // 🔥 FULL ERROR
+//   }
+// };
+
+
+
 import nodemailer from "nodemailer";
+import dns from "dns";
+
+// Force IPv4 — fixes ENETUNREACH on Render/Railway/Vercel serverless
+dns.setDefaultResultOrder("ipv4first");
 
 export const sendMeetingEmail = async (to, roomId) => {
   const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com", // ✅ use host instead of service
+    host: "smtp.gmail.com",
     port: 587,
-    secure: false, // TLS
+    secure: false,
+    family: 4, // 👈 Force IPv4 socket
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS, // ⚠️ MUST be App Password
+      pass: process.env.EMAIL_PASS, // Must be Gmail App Password
+    },
+    tls: {
+      rejectUnauthorized: false, // Avoids cert issues on some hosts
     },
   });
 
-  // ✅ DEBUG SMTP CONNECTION
   try {
     await transporter.verify();
     console.log("✅ SMTP is ready");
   } catch (err) {
-    console.error("❌ SMTP ERROR FULL:", err); // 🔥 FULL ERROR
-    return;
+    console.error("❌ SMTP VERIFY ERROR:", err.message);
+    throw err; // Let caller handle it
   }
 
   const joinLink = `${process.env.FRONTEND_URL}/video-call/${roomId}`;
 
-  try {
-    const info = await transporter.sendMail({
-      from: `"LiveRescue" <${process.env.EMAIL_USER}>`,
-      to,
-      subject: "🚑 Emergency Call - Join Now",
-      html: `
-        <h2>Emergency Call Request</h2>
-        <p>You have an incoming emergency call.</p>
-        <a href="${joinLink}" style="padding:10px 20px;background:red;color:white;text-decoration:none;">
-          Join Call
-        </a>
-        <p>Room ID: ${joinLink}</p>
-      `,
-    });
+  const info = await transporter.sendMail({
+    from: `"LiveRescue" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: "🚑 Emergency Call - Join Now",
+    html: `
+      <h2>Emergency Call Request</h2>
+      <p>You have an incoming emergency call.</p>
+      <a href="${joinLink}" style="padding:10px 20px;background:red;color:white;text-decoration:none;border-radius:4px;">
+        Join Call
+      </a>
+      <p>Room ID: ${roomId}</p>
+    `,
+  });
 
-    console.log("✅ Email sent:", info);
-  } catch (err) {
-    console.error("❌ SEND ERROR FULL:", err); // 🔥 FULL ERROR
-  }
+  console.log("✅ Email sent:", info.messageId);
+  return info;
 };
