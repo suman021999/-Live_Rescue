@@ -1,4 +1,4 @@
-// server/utils/sendMail.js
+// // server/utils/sendMail.js
 
 // import nodemailer from "nodemailer";
 
@@ -66,7 +66,7 @@ export const sendMeetingEmail = async (to, roomId) => {
     return;
   }
 
-  const joinLink = `http://localhost:5000/video-call/${roomId}`;
+  const joinLink = `http://localhost:5173/video-call/${roomId}`;
 
   try {
     const info = await transporter.sendMail({

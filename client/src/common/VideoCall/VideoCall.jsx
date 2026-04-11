@@ -1,37 +1,12 @@
-//================= VIDEO CALL COMPONENT =================
+// // ================= VIDEO CALL COMPONENT =================
 
 import { Mic, MicOff, Video, VideoOff, Monitor, PhoneOff } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-import { socket } from "../service";
-// import { io } from "socket.io-client";
+import { io } from "socket.io-client";
 
+// 🔥 Use env variable for socket URL
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
-
-// ✅ FIX: Free public TURN servers (works in production)
-// For a more reliable production app, get your own credentials at:
-// https://www.metered.ca/tools/openrelay/
-const ICE_SERVERS = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-    {
-      urls: "turn:openrelay.metered.ca:80",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-    {
-      urls: "turn:openrelay.metered.ca:443",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-    {
-      urls: "turn:openrelay.metered.ca:443?transport=tcp",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-  ],
-};
 
 export default function VideoCall() {
   const navigate = useNavigate();
@@ -44,7 +19,7 @@ export default function VideoCall() {
   const peerConnection = useRef(null);
   const localStreamRef = useRef(null);
   const allStreams = useRef([]);
-  const socketRef = useRef(null);
+  const socketRef = useRef(null); // 🔥 LOCAL SOCKET — not the global singleton
   const pendingCandidates = useRef([]);
   const isCaller = useRef(false);
   const makingOffer = useRef(false);
@@ -79,14 +54,15 @@ export default function VideoCall() {
   useEffect(() => {
     if (!roomId) return;
 
-    // ✅ FIX: Declare pc in the outer scope so cleanup can access it
     let pc = null;
 
-
-    
-
-    const sock = socket;
-socketRef.current = sock;
+    // 🔥 KEY FIX: forceNew: true — each tab gets its OWN socket connection
+    // Without this, both tabs share one socket singleton → events fire on both → chaos
+    const sock = io(SOCKET_URL, {
+      withCredentials: true,
+      forceNew: true,
+    });
+    socketRef.current = sock;
 
     const init = async () => {
       try {
@@ -103,8 +79,22 @@ socketRef.current = sock;
           localVideoRef.current.srcObject = stream;
         }
 
-        // ✅ FIX: Assign to outer `pc` (no `const`) so cleanup can close it
-        pc = new RTCPeerConnection(ICE_SERVERS);
+        const pc = new RTCPeerConnection({
+          iceServers: [
+            // ✅ STUN (keep)
+            { urls: "stun:stun.l.google.com:19302" },
+
+            // 🔥 TURN (ADD THIS)
+            {
+              urls: "turn:relay.metered.ca:80",
+              username: "YOUR_USERNAME",
+              credential: "YOUR_PASSWORD",
+            },
+          ],
+        });
+
+        
+
         peerConnection.current = pc;
 
         // Add local tracks to peer connection
@@ -120,34 +110,34 @@ socketRef.current = sock;
           setStatus("Connected");
         };
 
-        // ICE candidate generated locally → send to other peer
+        // ICE candidate generated locally
         pc.onicecandidate = ({ candidate }) => {
           if (candidate) {
             sock.emit("ice_candidate", { roomId, candidate });
           }
         };
 
-        // ✅ Log ICE gathering state to help debug TURN issues
-        pc.onicegatheringstatechange = () => {
-          console.log("🧊 ICE gathering state:", pc.iceGatheringState);
-        };
-
         pc.onconnectionstatechange = () => {
           console.log("🔗 Connection state:", pc.connectionState);
           if (pc.connectionState === "connected") setStatus("Connected");
-          if (pc.connectionState === "disconnected") setStatus("Reconnecting...");
-          if (pc.connectionState === "failed") {
-            setStatus("Connection failed");
-            console.error("❌ WebRTC connection failed — check TURN server");
-          }
+          if (pc.connectionState === "disconnected")
+            setStatus("Reconnecting...");
+          if (pc.connectionState === "failed") setStatus("Connection failed");
         };
 
         // 3. Set up ALL socket listeners BEFORE emitting join_room
+        //    This is critical — server may respond instantly
+
+        // Server tells us: are we first (caller) or second (answerer) in the room?
         sock.on("room_ready", ({ isCaller: caller, type }) => {
           isCaller.current = caller;
+
+          // Set the specific type (e.g., medical, sos)
           if (type) setCallType(type);
           console.log("📦 room_ready — isCaller:", caller);
           setStatus(caller ? "Waiting for other peer..." : "Joining call...");
+          // If caller: we wait for "start_offer" (triggered when 2nd peer joins)
+          // If answerer: we wait for "offer"
         });
 
         // Server fires this on the FIRST peer when the SECOND peer joins
@@ -168,7 +158,10 @@ socketRef.current = sock;
 
         // Received offer from the caller
         sock.on("offer", async (offer) => {
-          console.log("📥 Offer received — signaling state:", pc.signalingState);
+          console.log(
+            "📥 Offer received — signaling state:",
+            pc.signalingState
+          );
           try {
             const collision =
               makingOffer.current || pc.signalingState !== "stable";
@@ -193,14 +186,20 @@ socketRef.current = sock;
 
         // Received answer from the answerer
         sock.on("answer", async (answer) => {
-          console.log("📥 Answer received — signaling state:", pc.signalingState);
+          console.log(
+            "📥 Answer received — signaling state:",
+            pc.signalingState
+          );
           try {
             if (pc.signalingState === "have-local-offer") {
               await pc.setRemoteDescription(new RTCSessionDescription(answer));
               await flushPendingCandidates(pc);
               console.log("✅ Remote description set from answer");
             } else {
-              console.warn("⚠️ Unexpected state for answer:", pc.signalingState);
+              console.warn(
+                "⚠️ Unexpected state for answer:",
+                pc.signalingState
+              );
             }
           } catch (e) {
             console.error("❌ Handle answer error:", e);
@@ -230,7 +229,7 @@ socketRef.current = sock;
           navigate("/emergency");
         });
 
-        // 4. NOW join the room — all listeners are set up above
+        // 4. NOW join the room — listeners are all set up above
         sock.emit("join_room", roomId);
         console.log("📦 Emitted join_room:", roomId);
       } catch (err) {
@@ -251,7 +250,6 @@ socketRef.current = sock;
       sock.off("call_ended");
       sock.disconnect();
       stopAllCameras();
-      // ✅ FIX: `pc` is now the outer variable — correctly closes the connection
       pc?.close();
       setStreamReady(false);
     };
@@ -270,14 +268,14 @@ socketRef.current = sock;
     if (!pc) return;
 
     if (!videoOff) {
-      // Turn off — stop all camera tracks
+      // Turn off
       stopAllCameras();
       const sender = pc.getSenders().find((s) => s.track?.kind === "video");
       if (sender) sender.replaceTrack(null);
       if (localVideoRef.current) localVideoRef.current.srcObject = null;
       setVideoOff(true);
     } else {
-      // Turn on — restart camera
+      // Turn on
       try {
         const newStream = await navigator.mediaDevices.getUserMedia({
           video: true,
@@ -302,56 +300,60 @@ socketRef.current = sock;
     navigate("/emergency");
   };
 
-  const switchCamera = async () => {
-    const pc = peerConnection.current;
-    if (!pc) return;
+const switchCamera = async () => {
+  const pc = peerConnection.current;
+  if (!pc) return;
 
-    // Just toggle the stored mode if video is off — don't start camera
-    if (videoOff) {
-      const newFacingMode = facingMode === "user" ? "environment" : "user";
-      setFacingMode(newFacingMode);
-      console.log("🔁 Camera switched (OFF state) →", newFacingMode);
-      return;
+  // ✅ Just change mode if video is OFF (don't start camera)
+  if (videoOff) {
+    const newFacingMode = facingMode === "user" ? "environment" : "user";
+    setFacingMode(newFacingMode);
+    console.log("🔁 Camera switched (OFF state) →", newFacingMode);
+    return;
+  }
+
+  try {
+    const newFacingMode = facingMode === "user" ? "environment" : "user";
+
+    // Stop only video tracks (not audio ❗)
+    const currentStream = localStreamRef.current;
+    currentStream?.getVideoTracks().forEach((track) => track.stop());
+
+    // ⚠️ IMPORTANT: Don't request audio again (prevents mic glitch)
+    const newStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: newFacingMode },
+    });
+
+    allStreams.current.push(newStream);
+
+    const newVideoTrack = newStream.getVideoTracks()[0];
+
+    // Replace track in peer connection
+    const sender = pc.getSenders().find((s) => s.track?.kind === "video");
+    if (sender) {
+      await sender.replaceTrack(newVideoTrack);
     }
 
-    try {
-      const newFacingMode = facingMode === "user" ? "environment" : "user";
+    // Merge with existing audio stream
+    const audioTracks = localStreamRef.current?.getAudioTracks() || [];
+    const combinedStream = new MediaStream([
+      ...audioTracks,
+      newVideoTrack,
+    ]);
 
-      // Stop only video tracks — keep audio running
-      const currentStream = localStreamRef.current;
-      currentStream?.getVideoTracks().forEach((track) => track.stop());
+    localStreamRef.current = combinedStream;
 
-      // ⚠️ Don't request audio again — prevents mic glitch
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: newFacingMode },
-      });
-
-      allStreams.current.push(newStream);
-
-      const newVideoTrack = newStream.getVideoTracks()[0];
-
-      // Replace the video track in the peer connection
-      const sender = pc.getSenders().find((s) => s.track?.kind === "video");
-      if (sender) {
-        await sender.replaceTrack(newVideoTrack);
-      }
-
-      // Merge with existing audio
-      const audioTracks = localStreamRef.current?.getAudioTracks() || [];
-      const combinedStream = new MediaStream([...audioTracks, newVideoTrack]);
-
-      localStreamRef.current = combinedStream;
-
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = combinedStream;
-      }
-
-      setFacingMode(newFacingMode);
-    } catch (err) {
-      console.error("❌ Camera switch error:", err);
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = combinedStream;
     }
-  };
 
+    setFacingMode(newFacingMode);
+  } catch (err) {
+    console.error("❌ Camera switch error:", err);
+  }
+};
+
+  // Helper function to capitalize the type
   const formatType = (str) => {
     if (!str) return "";
     return str.charAt(0).toUpperCase() + str.slice(1);
@@ -409,10 +411,7 @@ socketRef.current = sock;
           {videoOff ? <VideoOff size={18} /> : <Video size={18} />}
         </button>
 
-        <button
-          onClick={switchCamera}
-          className="p-3 bg-gray-700 rounded-full text-white"
-        >
+        <button onClick={switchCamera} className="p-3 bg-gray-700 rounded-full text-white">
           <Monitor size={18} />
         </button>
 
