@@ -44,6 +44,8 @@ export const sendMeetingEmail = async (to, roomId) => {
     console.error("❌ SEND ERROR (full):", JSON.stringify(err, null, 2));
   console.error("❌ SEND ERROR code:", err.code);
   console.error("❌ SEND ERROR response:", err.response);
+  console.log("EMAIL_USER:", process.env.EMAIL_USER);
+console.log("EMAIL_PASS:", process.env.EMAIL_PASS);
   }
 };
 
