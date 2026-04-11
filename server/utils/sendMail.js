@@ -66,7 +66,7 @@ export const sendMeetingEmail = async (to, roomId) => {
     return;
   }
 
-  const joinLink = `http://localhost:5173/video-call/${roomId}`;
+  const joinLink = `${process.env.FRONTEND_URL}/video-call/${roomId}`;
 
   try {
     const info = await transporter.sendMail({
