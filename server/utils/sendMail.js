@@ -5,11 +5,12 @@ import nodemailer from "nodemailer";
 export const sendMeetingEmail = async (to, roomId) => {
   const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // true for 465
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // App Password, not raw password
+port: 465,
+secure: true,
+family: 4, // ✅ FORCE IPv4 (THIS FIXES YOUR ISSUE)
+auth: {
+  user: process.env.EMAIL_USER,
+  pass: process.env.EMAIL_PASS,
   },
 });
 
