@@ -1,13 +1,19 @@
 // server/utils/sendMail.js
 
 import nodemailer from "nodemailer";
+import dns from "dns";
+
+// ✅ Force IPv4 — fixes ENETUNREACH on Render free tier (IPv6-first by default)
+dns.setDefaultResultOrder("ipv4first");
 
 export const sendMeetingEmail = async (to, roomId) => {
   const transporter = nodemailer.createTransport({
-    service: "gmail", // 🔥 change this
+    host: "smtp.gmail.com",  // ✅ explicit host
+    port: 587,               // ✅ STARTTLS — port 587 is open on Render free tier
+    secure: false,           // false = STARTTLS (upgrades after connect)
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+      pass: process.env.EMAIL_PASS, // Must be a Gmail App Password
     },
   });
 
@@ -41,7 +47,7 @@ export const sendMeetingEmail = async (to, roomId) => {
   } catch (err) {
     console.error("❌ SEND ERROR:", err.message);
     console.log("EMAIL_USER:", process.env.EMAIL_USER);
-console.log("EMAIL_PASS exists:", !!process.env.EMAIL_PASS);
+    console.log("EMAIL_PASS exists:", !!process.env.EMAIL_PASS);
   }
 };
 
