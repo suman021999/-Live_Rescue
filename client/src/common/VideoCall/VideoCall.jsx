@@ -60,6 +60,7 @@ export default function VideoCall() {
     // Without this, both tabs share one socket singleton → events fire on both → chaos
     const sock = io(SOCKET_URL, {
       withCredentials: true,
+      transports: ["websocket", "polling"],
       forceNew: true,
     });
     socketRef.current = sock;

@@ -53,7 +53,7 @@ const io = new Server(server, {
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   },
-  // transports: ["websocket", "polling"], // ✅ CRITICAL FIX
+  transports: ["websocket", "polling"], // ✅ CRITICAL FIX
 });
 
 // 🔥 RESPONDERS STORAGE (multi-type)
