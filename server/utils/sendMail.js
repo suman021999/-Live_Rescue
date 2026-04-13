@@ -3,19 +3,17 @@
 import https from "https";
 
 // ✅ SendPulse API Config
-// Note: You must add these to your .env file
 const CLIENT_ID = process.env.SENDPULSE_CLIENT_ID;
 const CLIENT_SECRET = process.env.SENDPULSE_CLIENT_SECRET;
+const SENDER_EMAIL = process.env.EMAIL_USER;
 
 let cachedToken = null;
 let tokenExpiry = 0;
 
 /**
- * Gets the Access Token from SendPulse using Client Credentials
- * Uses Port 443 (HTTP), which is NOT blocked by Render.
+ * Gets the Access Token from SendPulse
  */
 const getSendPulseToken = async () => {
-  // Return cached token if still valid
   if (cachedToken && Date.now() < tokenExpiry) {
     return cachedToken;
   }
@@ -32,7 +30,7 @@ const getSendPulseToken = async () => {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Content-Length": postData.length,
+      "Content-Length": Buffer.byteLength(postData),
     },
   };
 
@@ -45,7 +43,6 @@ const getSendPulseToken = async () => {
           const parsed = JSON.parse(data);
           if (parsed.access_token) {
             cachedToken = parsed.access_token;
-            // Token usually valid for 3600 seconds, expire 1 minute early for safety
             tokenExpiry = Date.now() + (parsed.expires_in - 60) * 1000;
             resolve(cachedToken);
           } else {
@@ -56,7 +53,6 @@ const getSendPulseToken = async () => {
         }
       });
     });
-
     req.on("error", (e) => reject(e));
     req.write(postData);
     req.end();
@@ -65,9 +61,15 @@ const getSendPulseToken = async () => {
 
 /**
  * Sends meeting email via SendPulse REST API
- * This bypasses Render's SMTP port blocking (25, 465, 587).
  */
 export const sendMeetingEmail = async (to, roomId) => {
+  // ✅ Safety check to identify if env variables are missing
+  if (!to || !SENDER_EMAIL) {
+    const errorMsg = `Missing email parameters. Sender: ${SENDER_EMAIL || "MISSING"}, To: ${to || "MISSING"}`;
+    console.error("❌ " + errorMsg);
+    throw new Error(errorMsg);
+  }
+
   try {
     const token = await getSendPulseToken();
     const joinLink = `${process.env.FRONTEND_URL}/video-call/${roomId}`;
@@ -86,13 +88,15 @@ export const sendMeetingEmail = async (to, roomId) => {
             <p style="color: #666; font-size: 14px;">Room ID: <code style="background: #f4f4f4; padding: 2px 5px; border-radius: 3px;">${roomId}</code></p>
           </div>
         `,
+        text: `Emergency Call Request. Join the video call here: ${joinLink}. Room ID: ${roomId}`, // ✅ Added plain text
         subject: "🚑 Emergency Call - Join Now",
         from: {
           name: "LiveRescue",
-          email: process.env.EMAIL_USER, // e.g., 'your-verified-email@domain.com'
+          email: SENDER_EMAIL, 
         },
         to: [
           {
+            name: "Rescue Responder", // ✅ Added name field
             email: to,
           },
         ],
@@ -105,7 +109,7 @@ export const sendMeetingEmail = async (to, roomId) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Content-Length": emailData.length,
+        "Content-Length": Buffer.byteLength(emailData),
         Authorization: `Bearer ${token}`,
       },
     };
@@ -119,7 +123,6 @@ export const sendMeetingEmail = async (to, roomId) => {
             console.log("✅ Email sent via SendPulse API (Port 443)");
             resolve(data);
           } else {
-            console.error("❌ SendPulse API Error:", data);
             reject(new Error("SendPulse API Error: " + data));
           }
         });
