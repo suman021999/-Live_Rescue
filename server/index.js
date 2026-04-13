@@ -93,7 +93,7 @@ io.on("connection", (socket) => {
     socket.emit("call_accepted", { roomId, type });
 
     try {
-      await sendMeetingEmail("sivajir214@gmail.com", roomId);
+      await sendMeetingEmail(process.env.EMAIL_USER, roomId);
       console.log("📧 Email sent successfully");
     } catch (err) {
       console.error("❌ Email failed:", err);
