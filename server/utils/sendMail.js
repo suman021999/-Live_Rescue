@@ -8,8 +8,8 @@ dns.setDefaultResultOrder("ipv4first");
 
 export const sendMeetingEmail = async (to, roomId) => {
   const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",  // ✅ explicit host
-    port: 2525,               // ✅ STARTTLS — port 587 is open on Render free tier
+    host: "gmail.com",  // ✅ explicit host
+    // port: 2525,               // ✅ STARTTLS — port 587 is open on Render free tier
     secure: false,           // false = STARTTLS (upgrades after connect)
     auth: {
       user: process.env.EMAIL_USER,
