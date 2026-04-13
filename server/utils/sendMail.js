@@ -1,40 +1,45 @@
 // server/utils/sendMail.js
 
 import nodemailer from "nodemailer";
-import { resolve4 } from "dns/promises";
 import dns from "dns";
 
-// ✅ Force IPv4 at DNS level — belt-and-suspenders approach
+// ✅ Step 1: Set global DNS preference to IPv4
 dns.setDefaultResultOrder("ipv4first");
 
-export const sendMeetingEmail = async (to, roomId) => {
-  // ✅ PRE-RESOLVE smtp.gmail.com to an IPv4 address BEFORE creating the transporter.
-  // This is the only 100% reliable way to avoid ENETUNREACH on Render free tier,
-  // which resolves hostnames to IPv6 first and the socket connect fails.
-  let smtpHost = "smtp.gmail.com";
-  try {
-    const [ipv4] = await resolve4("smtp.gmail.com");
-    smtpHost = ipv4;
-    console.log("✅ Resolved smtp.gmail.com →", ipv4);
-  } catch (resolveErr) {
-    console.warn("⚠️ DNS resolve4 failed, falling back to hostname:", resolveErr.message);
+// ✅ Step 2: Patch dns.lookup to FORCE IPv4 for smtp.gmail.com
+// WHY: nodemailer v8 uses net.createConnection() internally, which calls
+// dns.lookup() at socket creation time — NOT dns.resolve4(). On Render free
+// tier, dns.lookup("smtp.gmail.com") returns an IPv6 address first, causing
+// the ENETUNREACH error. Patching here intercepts that call before the socket
+// is created and forces family:4 (IPv4) for that specific host only.
+const _originalLookup = dns.lookup.bind(dns);
+dns.lookup = function (hostname, options, callback) {
+  if (typeof options === "function") {
+    callback = options;
+    options = {};
   }
+  if (hostname === "smtp.gmail.com") {
+    // Force IPv4 only for the SMTP host — all other DNS stays unaffected
+    options = { ...(options || {}), family: 4 };
+  }
+  return _originalLookup(hostname, options, callback);
+};
 
+export const sendMeetingEmail = async (to, roomId) => {
   const transporter = nodemailer.createTransport({
-    host: smtpHost,            // ✅ IPv4 address (e.g. 74.125.x.x) or hostname fallback
-    port: 587,                 // ✅ STARTTLS — open on Render free tier
-    secure: false,             // false = STARTTLS (upgrades after connect)
+    host: "smtp.gmail.com",
+    port: 587,               // STARTTLS — open on Render free tier
+    secure: false,           // false = STARTTLS (upgrades after connect)
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS, // Must be a Gmail App Password
     },
     tls: {
-      rejectUnauthorized: false,       // ✅ Avoids cert chain issues on some hosts
-      servername: "smtp.gmail.com",    // ✅ Required for TLS SNI when connecting via raw IP
+      rejectUnauthorized: false, // Avoids cert issues on some hosting providers
     },
   });
 
-  // ✅ Verify SMTP connection before sending
+  // Verify SMTP connection before sending
   try {
     await transporter.verify();
     console.log("✅ SMTP is ready");
@@ -42,7 +47,7 @@ export const sendMeetingEmail = async (to, roomId) => {
     console.error("❌ SMTP ERROR:", err.message);
     console.log("EMAIL_USER:", process.env.EMAIL_USER);
     console.log("EMAIL_PASS exists:", !!process.env.EMAIL_PASS);
-    throw err; // Bubble up so caller (index.js) can catch it
+    throw err; // ✅ Bubble up — so index.js logs "❌ Email failed" (not "Email sent")
   }
 
   const joinLink = `${process.env.FRONTEND_URL}/video-call/${roomId}`;
