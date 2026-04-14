@@ -1,12 +1,199 @@
-//index.js
+// //index.js
+// import express from "express";
+// import dotenv from "dotenv";
+// import cors from "cors";
+// import cookieParser from "cookie-parser";
+// import http from "http";
+
+// import { Server } from "socket.io";
+// import { sendMeetingEmail } from "./utils/sendMail.js";
+// import database from "./db/database.js";
+// import userRoutes from "./routes/user.route.js";
+// import callRoutes from "./routes/call.route.js";
+// import accountRoutes from "./routes/account.routes.js";
+// import emergencyContactRoutes from "./routes/emergencyContact.route.js";
+// import securitytRoutes from "./routes/security.routes.js";
+
+// // ================= INIT =================
+// dotenv.config();
+
+// const app = express();
+// const server = http.createServer(app);
+
+// // ================= DATABASE =================
+// database();
+
+// // ================= CORS =================
+
+
+// const corsOptions = {
+//   origin: ["https://live-rescue.vercel.app", "http://localhost:5173"],
+//   credentials: true,
+//   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+// };
+
+// app.use(cors(corsOptions));
+
+// // ================= MIDDLEWARE =================
+// app.use(cookieParser());
+// app.use(express.json({ limit: "100mb" }));
+// app.use(express.urlencoded({ extended: true }));
+
+// // ================= ROUTES =================
+// app.use("/api/v1/user", userRoutes);
+// app.use("/api/v1/call", callRoutes);
+// app.use("/api/v1/account", accountRoutes);
+// app.use("/api/v1/emergencyContact", emergencyContactRoutes);
+// app.use("/api/v1/security", securitytRoutes);
+
+// // ================= SOCKET.IO =================
+// const io = new Server(server, {
+//   cors: {
+//     origin: ["https://live-rescue.vercel.app", "http://localhost:5173"],
+//     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+//     credentials: true,
+//   },
+//   // transports: ["websocket", "polling"], // ✅ CRITICAL FIX
+// });
+
+// // 🔥 RESPONDERS STORAGE (multi-type)
+// let responders = {
+//   medical: [],
+//   sos: [],
+//   disaster: [],
+//   roadside: [],
+// };
+// const roomMetadata = {};
+// let users = [];
+
+// io.on("connection", (socket) => {
+//   console.log("🔌 Connected:", socket.id);
+
+//   // ================= USER JOIN =================
+//   socket.on("join_user", (user) => {
+//     users.push({ socketId: socket.id, ...user });
+//     console.log("👤 User joined");
+//   });
+
+//   // ================= RESPONDER JOIN =================
+//   socket.on("join_responder", ({ type, name }) => {
+//     if (!responders[type]) responders[type] = [];
+//     responders[type].push({ socketId: socket.id, name });
+//     console.log(`✅ ${type} responder joined`);
+//   });
+
+//   // ================= CALL REQUEST =================
+//   socket.on("call_request", async ({ type, userId }) => {
+//     console.log("📞 Call requested:", type);
+
+//     const roomId = `${socket.id}`;
+//     // Store the type for this room
+//     roomMetadata[roomId] = type;
+
+//     socket.emit("call_accepted", { roomId, type });
+
+//     try {
+//       await sendMeetingEmail(process.env.EMAIL_USER, roomId);
+//       console.log("📧 Email sent successfully");
+//     } catch (err) {
+//       console.error("❌ Email failed:", err);
+//     }
+
+//     const availableResponders = responders[type];
+
+//     if (!availableResponders || availableResponders.length === 0) {
+//       socket.emit("no_responder_available");
+//       return;
+//     }
+
+//     const responder = availableResponders[0];
+//     io.to(responder.socketId).emit("incoming_call", { roomId, userId, type });
+//   });
+
+//   // ================= JOIN ROOM =================
+//   // 🔥 FIXED: Coordinate caller/answerer roles properly
+//   socket.on("join_room", (roomId) => {
+//     socket.join(roomId);
+
+//     const room = io.sockets.adapter.rooms.get(roomId);
+//     const peerCount = room ? room.size : 0;
+
+//     // Get the type we stored earlier
+//     const type = roomMetadata[roomId] || "Emergency";
+
+//     console.log(`📦 join_room: ${roomId} — peers in room: ${peerCount}`);
+
+//     if (peerCount === 1) {
+//       // First peer: they are the caller, wait for 2nd peer
+//       socket.emit("room_ready", { isCaller: true, type });
+//       console.log(`👤 First peer in room ${roomId} — waiting for 2nd`);
+//     } else {
+//       // Second peer joined
+//       socket.emit("room_ready", { isCaller: false, type });
+
+//       // 🔥 Tell the FIRST peer to create and send the offer NOW
+//       socket.to(roomId).emit("start_offer");
+//       console.log(`🤝 Second peer joined ${roomId} — triggering offer`);
+//     }
+//   });
+
+//   // ================= WEBRTC SIGNALING =================
+//   socket.on("offer", ({ roomId, offer }) => {
+//     console.log(`📡 Relaying offer in room ${roomId}`);
+//     socket.to(roomId).emit("offer", offer);
+//   });
+
+//   socket.on("answer", ({ roomId, answer }) => {
+//     console.log(`📡 Relaying answer in room ${roomId}`);
+//     socket.to(roomId).emit("answer", answer);
+//   });
+
+//   socket.on("ice_candidate", ({ roomId, candidate }) => {
+//     socket.to(roomId).emit("ice_candidate", candidate);
+//   });
+
+//   // ================= END CALL =================
+//   socket.on("end_call", ({ callId }) => {
+//     delete roomMetadata[callId];
+//     console.log("📴 Call ended:", callId);
+//     socket.broadcast.emit("call_ended", { callId });
+//     socket.rooms.forEach((room) => {
+//       if (room !== socket.id) {
+//         socket.leave(room);
+//         console.log(`🚪 Left room: ${room}`);
+//       }
+//     });
+//   });
+
+//   // ================= DISCONNECT =================
+//   socket.on("disconnect", () => {
+//     console.log("❌ Disconnected:", socket.id);
+//     users = users.filter((u) => u.socketId !== socket.id);
+//     Object.keys(responders).forEach((type) => {
+//       responders[type] = responders[type].filter(
+//         (r) => r.socketId !== socket.id
+//       );
+//     });
+//   });
+// });
+
+// // ================= START SERVER =================
+// const PORT = process.env.PORT || 8000;
+// server.listen(PORT, () => {
+//   console.log(`🚀 Server running on port ${PORT}`);
+// });
+
+// index.js — LiveRescue Backend
+// ✅ sendMail.js REMOVED — replaced by gmailNotify.js (Gmail OAuth2 API)
+
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import http from "http";
-
 import { Server } from "socket.io";
-import { sendMeetingEmail } from "./utils/sendMail.js";
+
+import { sendInstantCallEmail } from "./utils/gmailNotify.js"; // ✅ NEW
 import database from "./db/database.js";
 import userRoutes from "./routes/user.route.js";
 import callRoutes from "./routes/call.route.js";
@@ -24,14 +211,11 @@ const server = http.createServer(app);
 database();
 
 // ================= CORS =================
-
-
 const corsOptions = {
   origin: ["https://live-rescue.vercel.app", "http://localhost:5173"],
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
 };
-
 app.use(cors(corsOptions));
 
 // ================= MIDDLEWARE =================
@@ -53,98 +237,96 @@ const io = new Server(server, {
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
   },
-  // transports: ["websocket", "polling"], // ✅ CRITICAL FIX
 });
 
-// 🔥 RESPONDERS STORAGE (multi-type)
+// ================= STATE =================
 let responders = {
   medical: [],
   sos: [],
   disaster: [],
   roadside: [],
 };
-const roomMetadata = {};
+const roomMetadata = {}; // roomId → { type, callerSocketId }
 let users = [];
 
+// ================= SOCKET EVENTS =================
 io.on("connection", (socket) => {
   console.log("🔌 Connected:", socket.id);
 
-  // ================= USER JOIN =================
+  // --- User joins ---
   socket.on("join_user", (user) => {
     users.push({ socketId: socket.id, ...user });
-    console.log("👤 User joined");
+    console.log("👤 User joined:", user);
   });
 
-  // ================= RESPONDER JOIN =================
+  // --- Responder joins (responder dashboard) ---
   socket.on("join_responder", ({ type, name }) => {
     if (!responders[type]) responders[type] = [];
+    // Avoid duplicate registrations on reconnect
+    responders[type] = responders[type].filter(
+      (r) => r.socketId !== socket.id
+    );
     responders[type].push({ socketId: socket.id, name });
-    console.log(`✅ ${type} responder joined`);
+    console.log(`✅ ${type} responder joined: ${name}`);
   });
 
-  // ================= CALL REQUEST =================
+  // --- Call request (WhatsApp-style instant) ---
   socket.on("call_request", async ({ type, userId }) => {
-    console.log("📞 Call requested:", type);
+    console.log(`📞 Call request: type=${type}, from=${socket.id}`);
 
-    const roomId = `${socket.id}`;
-    // Store the type for this room
-    roomMetadata[roomId] = type;
+    const roomId = socket.id; // use caller's socket ID as room
+    roomMetadata[roomId] = { type, callerSocketId: socket.id };
 
+    // 1. Immediately tell caller their room is ready
     socket.emit("call_accepted", { roomId, type });
 
-    try {
-      await sendMeetingEmail(process.env.EMAIL_USER, roomId);
-      console.log("📧 Email sent successfully");
-    } catch (err) {
-      console.error("❌ Email failed:", err);
-    }
+    // 2. Fire Gmail notification instantly (non-blocking)
+    sendInstantCallEmail(roomId, type).catch((e) =>
+      console.error("Email error:", e)
+    );
 
-    const availableResponders = responders[type];
-
-    if (!availableResponders || availableResponders.length === 0) {
+    // 3. If a live responder is available → notify via socket too (instant)
+    const available = responders[type] || [];
+    if (available.length > 0) {
+      const responder = available[0];
+      io.to(responder.socketId).emit("incoming_call", {
+        roomId,
+        userId,
+        type,
+      });
+      console.log(`🚑 Live responder notified: ${responder.name}`);
+    } else {
+      // No live responder — email is the fallback (already sent above)
       socket.emit("no_responder_available");
-      return;
+      console.log("⚠️ No live responder — email sent to sankupatra2@gmail.com");
     }
-
-    const responder = availableResponders[0];
-    io.to(responder.socketId).emit("incoming_call", { roomId, userId, type });
   });
 
-  // ================= JOIN ROOM =================
-  // 🔥 FIXED: Coordinate caller/answerer roles properly
+  // --- Join WebRTC room ---
   socket.on("join_room", (roomId) => {
     socket.join(roomId);
 
     const room = io.sockets.adapter.rooms.get(roomId);
     const peerCount = room ? room.size : 0;
+    const meta = roomMetadata[roomId];
+    const type = meta?.type || "Emergency";
 
-    // Get the type we stored earlier
-    const type = roomMetadata[roomId] || "Emergency";
-
-    console.log(`📦 join_room: ${roomId} — peers in room: ${peerCount}`);
+    console.log(`📦 join_room: ${roomId} — peers: ${peerCount}`);
 
     if (peerCount === 1) {
-      // First peer: they are the caller, wait for 2nd peer
       socket.emit("room_ready", { isCaller: true, type });
-      console.log(`👤 First peer in room ${roomId} — waiting for 2nd`);
     } else {
-      // Second peer joined
       socket.emit("room_ready", { isCaller: false, type });
-
-      // 🔥 Tell the FIRST peer to create and send the offer NOW
       socket.to(roomId).emit("start_offer");
-      console.log(`🤝 Second peer joined ${roomId} — triggering offer`);
     }
   });
 
-  // ================= WEBRTC SIGNALING =================
+  // --- WebRTC signaling ---
   socket.on("offer", ({ roomId, offer }) => {
-    console.log(`📡 Relaying offer in room ${roomId}`);
     socket.to(roomId).emit("offer", offer);
   });
 
   socket.on("answer", ({ roomId, answer }) => {
-    console.log(`📡 Relaying answer in room ${roomId}`);
     socket.to(roomId).emit("answer", answer);
   });
 
@@ -152,20 +334,17 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("ice_candidate", candidate);
   });
 
-  // ================= END CALL =================
+  // --- End call ---
   socket.on("end_call", ({ callId }) => {
     delete roomMetadata[callId];
     console.log("📴 Call ended:", callId);
     socket.broadcast.emit("call_ended", { callId });
     socket.rooms.forEach((room) => {
-      if (room !== socket.id) {
-        socket.leave(room);
-        console.log(`🚪 Left room: ${room}`);
-      }
+      if (room !== socket.id) socket.leave(room);
     });
   });
 
-  // ================= DISCONNECT =================
+  // --- Disconnect cleanup ---
   socket.on("disconnect", () => {
     console.log("❌ Disconnected:", socket.id);
     users = users.filter((u) => u.socketId !== socket.id);
@@ -174,10 +353,16 @@ io.on("connection", (socket) => {
         (r) => r.socketId !== socket.id
       );
     });
+    // Clean up any room where this was the caller
+    Object.keys(roomMetadata).forEach((roomId) => {
+      if (roomMetadata[roomId]?.callerSocketId === socket.id) {
+        delete roomMetadata[roomId];
+      }
+    });
   });
 });
 
-// ================= START SERVER =================
+// ================= START =================
 const PORT = process.env.PORT || 8000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
