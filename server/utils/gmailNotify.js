@@ -5,13 +5,13 @@ import { google } from "googleapis";
 
 // ================= OAUTH2 CLIENT =================
 const oauth2Client = new google.auth.OAuth2(
-  process.env.GMAIL_CLIENT_ID,
-  process.env.GMAIL_CLIENT_SECRET,
+  process.env.CLIENT_ID,
+  process.env.SECRET,
   "https://developers.google.com/oauthplayground" // redirect URI used to get refresh token
 );
 
 oauth2Client.setCredentials({
-  refresh_token: process.env.GMAIL_REFRESH_TOKEN,
+  refresh_token: process.env.REFRESH_TOKEN,
 });
 
 // ================= SEND GMAIL =================
@@ -21,7 +21,7 @@ export const sendInstantCallEmail = async (roomId, callType = "Emergency") => {
 
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     const joinLink = `${frontendUrl}/video-call/${roomId}`;
-    const to = "sankupatra2@gmail.com";
+    const to = "sivajir214@gmail.com";
 
     const typeLabels = {
       medical: "🏥 Medical Help",
@@ -62,7 +62,7 @@ export const sendInstantCallEmail = async (roomId, callType = "Emergency") => {
     // RFC 2822 raw message
     const raw = [
       `To: ${to}`,
-      `From: "LiveRescue" <${process.env.GMAIL_USER}>`,
+      `From: "LiveRescue" <${process.env.EMAIL_USER}>`,
       `Subject: ${label} — Join Call Now`,
       `MIME-Version: 1.0`,
       `Content-Type: text/html; charset=utf-8`,
