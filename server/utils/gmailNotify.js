@@ -21,7 +21,7 @@ export const sendInstantCallEmail = async (roomId, callType = "Emergency") => {
 
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     const joinLink = `${frontendUrl}/video-call/${roomId}`;
-    const to = "sivajir214@gmail.com";
+    const to = "sankupatra2@gmail.com";
 
     const typeLabels = {
       medical: "🏥 Medical Help",
