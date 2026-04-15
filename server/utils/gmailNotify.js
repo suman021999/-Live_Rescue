@@ -6,7 +6,7 @@ import { google } from "googleapis";
 // ================= OAUTH2 CLIENT =================
 const oauth2Client = new google.auth.OAuth2(
   process.env.CLIENT_ID,
-  process.env.SECRET,
+  process.env.CLIENT_SECRET,
   "https://developers.google.com/oauthplayground" // redirect URI used to get refresh token
 );
 
