@@ -147,3 +147,17 @@ export const sendMeetingEmail = async (to, roomId) => {
 //   console.log("✅ Email sent:", info.messageId);
 //   return info;
 // };
+
+
+
+
+
+
+
+
+
+import { sendInstantCallEmail } from "./utils/gmailNotify.js"; // ✅ NEW
+    // // 2. Fire Gmail notification instantly (non-blocking)
+    // sendInstantCallEmail(roomId, type).catch((e) =>
+    //   console.error("Email error:", e)
+    // );

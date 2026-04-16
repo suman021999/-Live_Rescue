@@ -193,7 +193,7 @@ import cookieParser from "cookie-parser";
 import http from "http";
 import { Server } from "socket.io";
 
-import { sendInstantCallEmail } from "./utils/gmailNotify.js"; // ✅ NEW
+
 import database from "./db/database.js";
 import userRoutes from "./routes/user.route.js";
 import callRoutes from "./routes/call.route.js";
@@ -280,10 +280,7 @@ io.on("connection", (socket) => {
     // 1. Immediately tell caller their room is ready
     socket.emit("call_accepted", { roomId, type });
 
-    // 2. Fire Gmail notification instantly (non-blocking)
-    sendInstantCallEmail(roomId, type).catch((e) =>
-      console.error("Email error:", e)
-    );
+
 
     // 3. If a live responder is available → notify via socket too (instant)
     const available = responders[type] || [];
@@ -367,3 +364,5 @@ const PORT = process.env.PORT || 8000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
+
