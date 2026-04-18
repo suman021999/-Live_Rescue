@@ -10,6 +10,7 @@ import VideoCall from '../../common/VideoCall/VideoCall'
 import Payment from '../../common/Payment_system/Payment'
 
 
+
 const MainPage = () => {
   return (
  <>
